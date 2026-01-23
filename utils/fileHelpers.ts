@@ -1,7 +1,16 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
 
-// PDF.js worker is initialized in index.html to avoid import issues
+// Handle potential ESM/CJS interop issues with pdfjs-dist
+// @ts-ignore
+const pdfjs = pdfjsLib.default || pdfjsLib;
+
+// Ensure worker is set up safely
+if (typeof window !== 'undefined' && pdfjs.GlobalWorkerOptions) {
+    if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+        pdfjs.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    }
+}
 
 export const extractTextFromFile = async (file: File): Promise<string> => {
   const extension = file.name.split('.').pop()?.toLowerCase();
@@ -37,6 +46,7 @@ const extractTextFromDOCX = (file: File): Promise<string> => {
     reader.onload = async (e) => {
       try {
         const arrayBuffer = e.target?.result as ArrayBuffer;
+        // mammoth usually requires the arrayBuffer directly
         const result = await mammoth.extractRawText({ arrayBuffer });
         resolve(result.value);
       } catch (err) {
@@ -50,7 +60,9 @@ const extractTextFromDOCX = (file: File): Promise<string> => {
 
 const extractTextFromPDF = async (file: File): Promise<string> => {
     const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
+    // Use the resolved pdfjs instance
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
     
     let fullText = '';
     

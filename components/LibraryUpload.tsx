@@ -84,18 +84,33 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) processFile(file);
+    // Reset value so same file can be selected again
+    event.target.value = '';
   }, [smartFormat]);
 
   // Drag and Drop Handlers
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) setIsDragging(true);
+  };
+
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Check if the related target is still within the drop zone
+    // This prevents flickering when dragging over child elements
+    if (e.currentTarget.contains(e.relatedTarget as Node)) {
+        return;
+    }
+    
     setIsDragging(false);
   };
 
@@ -305,17 +320,18 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
                                         ? 'border-emerald-500 bg-emerald-50 scale-[1.02] shadow-lg' 
                                         : 'border-emerald-200 hover:border-emerald-500 hover:bg-emerald-50/50'}
                                   `}
+                                  onDragEnter={handleDragEnter}
                                   onDragOver={handleDragOver}
                                   onDragLeave={handleDragLeave}
                                   onDrop={handleDrop}
                               >
                                   {isLoading ? (
-                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                     <div className="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none">
                                         <Loader2 className="w-12 h-12 text-emerald-500 animate-spin mb-4" />
                                         <p className="text-lg text-emerald-800 font-medium">{statusMessage}</p>
                                      </div>
                                   ) : (
-                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                    <div className="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none">
                                         <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
                                             {isDragging ? <ArrowRight className="w-8 h-8 text-emerald-600" /> : <Upload className="w-8 h-8 text-emerald-600" />}
                                         </div>
