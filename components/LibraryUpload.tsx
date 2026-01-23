@@ -176,7 +176,7 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 text-emerald-950 font-sans selection:bg-emerald-200 selection:text-emerald-900">
+    <div className="h-full overflow-y-auto bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 text-emerald-950 font-sans selection:bg-emerald-200 selection:text-emerald-900">
       
       {/* Navbar / Header */}
       <nav className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-emerald-100/50 px-6 py-4 flex items-center justify-between">
