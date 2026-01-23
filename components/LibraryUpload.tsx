@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BookOpen, Upload, Youtube, FileText, Trash2, Library, Plus, Leaf, Search, ArrowRight, Loader2, Sparkles, Wand2, FileType } from 'lucide-react';
+import { BookOpen, Upload, Youtube, FileText, Trash2, Library, Plus, Leaf, Search, ArrowRight, Loader2, Sparkles, Wand2, FileType, Settings, Download, UploadCloud, X } from 'lucide-react';
 import { parseMarkdownToBook } from '../utils/markdownProcessor';
 import { extractTextFromFile } from '../utils/fileHelpers';
 import { Book } from '../types';
-import { getAllBooks, saveBook, deleteBook } from '../services/db.ts';
+import { getAllBooks, saveBook, deleteBook, exportLibraryAsJSON, importLibraryFromJSON } from '../services/db.ts';
 import { generateBookFromYouTube, generateBookFromText } from '../services/geminiService';
 
 interface LibraryUploadProps {
@@ -18,6 +18,7 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
   const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showSettings, setShowSettings] = useState(false);
   
   // Drag & Drop State
   const [isDragging, setIsDragging] = useState(false);
@@ -30,8 +31,8 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
   const loadLibrary = async () => {
     const books = await getAllBooks();
     setLibrary(books);
-    if (books.length > 0) {
-        setActiveTab('library');
+    if (books.length > 0 && activeTab === 'import' && !isLoading) {
+       // Optional: Auto switch logic if needed, but keeping user control is better usually
     }
   };
 
@@ -170,6 +171,49 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
         loadLibrary();
     }
   };
+  
+  const handleExportBackup = async () => {
+    try {
+        const json = await exportLibraryAsJSON();
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `zenreader-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setStatusMessage("Library exported successfully!");
+        setTimeout(() => setStatusMessage(""), 3000);
+    } catch (err) {
+        console.error(err);
+        setError("Failed to export library");
+    }
+  };
+
+  const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsLoading(true);
+    setStatusMessage("Restoring library...");
+    setError(null);
+    
+    try {
+        const text = await file.text();
+        const count = await importLibraryFromJSON(text);
+        await loadLibrary();
+        setStatusMessage(`Successfully restored ${count} books.`);
+        setTimeout(() => setStatusMessage(""), 3000);
+        setShowSettings(false); // close modal on success
+    } catch (err) {
+        console.error(err);
+        setError("Failed to import backup. Ensure the file is a valid JSON backup.");
+    } finally {
+        setIsLoading(false);
+    }
+  };
 
   const filteredLibrary = library.filter(book => 
     book.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -207,8 +251,71 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
                 <span className="ml-1 px-2 py-0.5 text-xs bg-emerald-200 text-emerald-800 rounded-full">{library.length}</span>
               )}
             </button>
+            <button
+               onClick={() => setShowSettings(true)}
+               className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors ml-2"
+               title="Settings & Backup"
+            >
+                <Settings size={20} />
+            </button>
         </div>
       </nav>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-emerald-100">
+                <div className="p-4 border-b border-emerald-50 flex justify-between items-center bg-emerald-50/30">
+                    <h3 className="font-serif font-bold text-lg text-emerald-900 flex items-center gap-2">
+                        <Settings size={20} /> Library Settings
+                    </h3>
+                    <button onClick={() => setShowSettings(false)} className="p-1 hover:bg-emerald-100 rounded-full text-emerald-600 transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="p-6 space-y-6">
+                    <div>
+                        <h4 className="font-semibold text-emerald-900 mb-2">Sync Devices</h4>
+                        <p className="text-sm text-emerald-600 mb-4 leading-relaxed">
+                            ZenReader stores your books locally on this device. To move your library to your iPhone or another computer, export a backup here and import it on the other device.
+                        </p>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <button 
+                                onClick={handleExportBackup}
+                                className="flex flex-col items-center justify-center gap-2 p-4 border border-emerald-200 rounded-xl hover:bg-emerald-50 hover:border-emerald-300 transition-all group"
+                            >
+                                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                                    <Download size={20} />
+                                </div>
+                                <span className="text-sm font-medium text-emerald-800">Export Backup</span>
+                            </button>
+
+                            <label className="flex flex-col items-center justify-center gap-2 p-4 border border-emerald-200 rounded-xl hover:bg-emerald-50 hover:border-emerald-300 transition-all cursor-pointer group">
+                                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                                    <UploadCloud size={20} />
+                                </div>
+                                <span className="text-sm font-medium text-emerald-800">Import Backup</span>
+                                <input type="file" className="hidden" accept=".json" onChange={handleImportBackup} />
+                            </label>
+                        </div>
+                    </div>
+                    
+                    {statusMessage && (
+                        <div className="p-3 bg-emerald-50 text-emerald-700 text-sm rounded-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+                             {isLoading && <Loader2 size={14} className="animate-spin" />}
+                             {statusMessage}
+                        </div>
+                    )}
+                    {error && (
+                        <div className="p-3 bg-rose-50 text-rose-700 text-sm rounded-lg animate-in fade-in slide-in-from-bottom-2">
+                            {error}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+      )}
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         

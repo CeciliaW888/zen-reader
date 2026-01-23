@@ -60,3 +60,22 @@ export const deleteBook = async (id: string): Promise<void> => {
     request.onerror = () => reject(request.error);
   });
 };
+
+export const exportLibraryAsJSON = async (): Promise<string> => {
+    const books = await getAllBooks();
+    return JSON.stringify(books, null, 2);
+};
+
+export const importLibraryFromJSON = async (jsonString: string): Promise<number> => {
+    const books = JSON.parse(jsonString);
+    if (!Array.isArray(books)) throw new Error("Invalid backup format");
+    
+    let count = 0;
+    for (const book of books) {
+        if (book.id && book.title && book.chapters) {
+            await saveBook(book);
+            count++;
+        }
+    }
+    return count;
+};
