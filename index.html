@@ -64,7 +64,9 @@
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "@google/genai": "https://esm.sh/@google/genai@^1.38.0",
     "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "react-markdown": "https://esm.sh/react-markdown@^10.1.0"
+    "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
+    "mammoth": "https://esm.sh/mammoth@1.8.0",
+    "pdfjs-dist": "https://esm.sh/pdfjs-dist@3.11.174"
   }
 }
 </script>
@@ -83,6 +85,11 @@
             });
         });
       }
+    </script>
+    <!-- Initialize PDF.js worker -->
+    <script type="module">
+        import * as pdfjsLib from 'pdfjs-dist';
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
     </script>
   </body>
 </html>

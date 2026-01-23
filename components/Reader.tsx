@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Chapter, ReaderSettings } from '../types';
 import { THEME_STYLES, FONT_SIZES } from '../constants';
+import { slugify } from '../utils/markdownProcessor';
 
 interface ReaderProps {
   chapter: Chapter;
@@ -30,6 +31,22 @@ export const Reader: React.FC<ReaderProps> = ({
     topRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chapter.id]);
 
+  // Custom components to inject IDs for scrolling
+  const markdownComponents = {
+    h1: ({ children }: any) => {
+      const id = typeof children === 'string' ? slugify(children) : undefined;
+      return <h1 id={id} className="scroll-mt-24">{children}</h1>;
+    },
+    h2: ({ children }: any) => {
+      const id = typeof children === 'string' ? slugify(children) : undefined;
+      return <h2 id={id} className="scroll-mt-24">{children}</h2>;
+    },
+    h3: ({ children }: any) => {
+      const id = typeof children === 'string' ? slugify(children) : undefined;
+      return <h3 id={id} className="scroll-mt-24">{children}</h3>;
+    }
+  };
+
   return (
     <div className={`flex-1 h-full overflow-y-auto relative scroll-smooth ${theme.bg}`}>
       <div ref={topRef} />
@@ -44,37 +61,41 @@ export const Reader: React.FC<ReaderProps> = ({
           prose-p:leading-relaxed
           prose-img:rounded-xl prose-img:shadow-md
         `}>
-          <ReactMarkdown>{chapter.content}</ReactMarkdown>
+          <ReactMarkdown components={markdownComponents}>
+            {chapter.content}
+          </ReactMarkdown>
         </article>
 
-        {/* Chapter Navigation Footer */}
-        <div className="mt-16 pt-8 border-t border-gray-200/20 flex justify-between items-center">
-          <button
-            onClick={onPrevChapter}
-            disabled={!hasPrev}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              !hasPrev ? 'opacity-0 cursor-default' : `${theme.ui} ${theme.uiHover}`
-            }`}
-          >
-            <ChevronLeft size={20} />
-            <span>Previous</span>
-          </button>
+        {/* Chapter Navigation Footer - Only show if we actually have multiple chapters */}
+        {(hasPrev || hasNext) && (
+          <div className="mt-16 pt-8 border-t border-gray-200/20 flex justify-between items-center">
+            <button
+              onClick={onPrevChapter}
+              disabled={!hasPrev}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                !hasPrev ? 'opacity-0 cursor-default' : `${theme.ui} ${theme.uiHover}`
+              }`}
+            >
+              <ChevronLeft size={20} />
+              <span>Previous</span>
+            </button>
 
-          <span className={`text-sm opacity-50 ${theme.text}`}>
-            Chapter {chapter.order + 1}
-          </span>
+            <span className={`text-sm opacity-50 ${theme.text}`}>
+              Chapter {chapter.order + 1}
+            </span>
 
-          <button
-            onClick={onNextChapter}
-            disabled={!hasNext}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-              !hasNext ? 'opacity-0 cursor-default' : `${theme.ui} ${theme.uiHover}`
-            }`}
-          >
-            <span>Next</span>
-            <ChevronRight size={20} />
-          </button>
-        </div>
+            <button
+              onClick={onNextChapter}
+              disabled={!hasNext}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                !hasNext ? 'opacity-0 cursor-default' : `${theme.ui} ${theme.uiHover}`
+              }`}
+            >
+              <span>Next</span>
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

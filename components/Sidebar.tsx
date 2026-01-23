@@ -1,7 +1,8 @@
-import React from 'react';
-import { X, Book, Type, Settings, Sparkles, Library } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { X, Book, Type, Settings, Sparkles, Library, AlignLeft } from 'lucide-react';
 import { Book as BookType, Chapter, ReaderSettings } from '../types';
 import { THEME_STYLES } from '../constants';
+import { extractHeadings } from '../utils/markdownProcessor';
 
 interface SidebarProps {
   book: BookType;
@@ -29,6 +30,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onBackToLibrary
 }) => {
   const theme = THEME_STYLES[settings.theme];
+  const isSingleChapter = book.chapters.length === 1;
+
+  // If single chapter, extract headings for TOC
+  const tocItems = useMemo(() => {
+    if (isSingleChapter) {
+      return extractHeadings(book.chapters[0].content);
+    }
+    return [];
+  }, [book, isSingleChapter]);
+
+  const handleHeadingClick = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (window.innerWidth < 1024) onClose();
+    }
+  };
 
   return (
     <>
@@ -54,7 +72,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </div>
 
-          {/* Chapters List */}
+          {/* Chapters / TOC List */}
           <div className="flex-1 overflow-y-auto p-4 space-y-1">
              <button
                onClick={onBackToLibrary}
@@ -64,10 +82,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span>Back to Library</span>
              </button>
 
-            <div className={`text-xs font-bold uppercase tracking-wider mb-3 ml-2 opacity-50 ${theme.text}`}>
-              Chapters
+            <div className={`text-xs font-bold uppercase tracking-wider mb-3 ml-2 opacity-50 ${theme.text} flex items-center gap-2`}>
+              <AlignLeft size={12} />
+              {isSingleChapter ? 'Table of Contents' : 'Chapters'}
             </div>
-            {book.chapters.map((chapter) => (
+
+            {/* Single Chapter Mode: Show Headings */}
+            {isSingleChapter && tocItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => handleHeadingClick(item.id)}
+                className={`
+                  w-full text-left px-4 py-2 rounded-lg text-sm transition-all
+                  ${theme.text} hover:bg-black/5 opacity-80 hover:opacity-100
+                `}
+                style={{ paddingLeft: `${item.level * 12}px` }}
+              >
+                 <span className="truncate block">{item.text}</span>
+              </button>
+            ))}
+
+            {/* Multi Chapter Mode: Show Chapters */}
+            {!isSingleChapter && book.chapters.map((chapter) => (
               <button
                 key={chapter.id}
                 onClick={() => {

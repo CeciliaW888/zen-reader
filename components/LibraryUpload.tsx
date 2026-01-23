@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BookOpen, Upload, Youtube, FileText, Trash2, Library, Plus, Leaf, Search, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { BookOpen, Upload, Youtube, FileText, Trash2, Library, Plus, Leaf, Search, ArrowRight, Loader2, Sparkles, Wand2, FileType } from 'lucide-react';
 import { parseMarkdownToBook } from '../utils/markdownProcessor';
+import { extractTextFromFile } from '../utils/fileHelpers';
 import { Book } from '../types';
 import { getAllBooks, saveBook, deleteBook } from '../services/db.ts';
 import { generateBookFromYouTube, generateBookFromText } from '../services/geminiService';
@@ -14,8 +15,13 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
   const [importType, setImportType] = useState<'file' | 'youtube' | 'text'>('file');
   const [library, setLibrary] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Drag & Drop State
+  const [isDragging, setIsDragging] = useState(false);
+  const [smartFormat, setSmartFormat] = useState(false);
   
   // Inputs
   const [urlInput, setUrlInput] = useState('');
@@ -24,9 +30,6 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
   const loadLibrary = async () => {
     const books = await getAllBooks();
     setLibrary(books);
-    // If we have books, we might want to show library, but user requested Import as 1st tab.
-    // We will default to Import (activeTab initial state), but if user had library selected before reload, 
-    // we generally reset. For now, we respect the default state.
     if (books.length > 0) {
         setActiveTab('library');
     }
@@ -42,31 +45,85 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
     onBookLoaded(book);
   };
 
+  const processFile = async (file: File) => {
+    setIsLoading(true);
+    setError(null);
+    setStatusMessage(`Extracting text from ${file.name}...`);
+
+    try {
+        const text = await extractTextFromFile(file);
+
+        if (smartFormat) {
+            setStatusMessage('AI is analyzing and restructuring content...');
+            // Use Gemini to structure raw text
+            const book = await generateBookFromText(text, file.name.split('.')[0]);
+            await handleBookReady(book);
+        } else {
+            setStatusMessage('Parsing markdown...');
+            // Standard parsing
+            const { title, chapters } = parseMarkdownToBook(text, file.name);
+            const newBook: Book = {
+                id: crypto.randomUUID(),
+                title,
+                chapters,
+                fileName: file.name,
+                dateAdded: Date.now(),
+                source: 'upload'
+            };
+            await handleBookReady(newBook);
+        }
+    } catch (err: any) {
+        console.error(err);
+        setError(err.message || "Failed to process file");
+    } finally {
+        setIsLoading(false);
+        setStatusMessage('');
+    }
+  };
+
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (file) processFile(file);
+  }, [smartFormat]);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const { title, chapters } = parseMarkdownToBook(text, file.name);
-      const newBook: Book = {
-        id: crypto.randomUUID(),
-        title,
-        chapters,
-        fileName: file.name,
-        dateAdded: Date.now(),
-        source: 'upload'
-      };
-      handleBookReady(newBook);
-    };
-    reader.readAsText(file);
-  }, []);
+  // Drag and Drop Handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+        const file = files[0];
+        // Validate type roughly
+        const validExtensions = ['md', 'txt', 'markdown', 'pdf', 'docx', 'srt', 'vtt'];
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        
+        if (ext && validExtensions.includes(ext)) {
+            await processFile(file);
+        } else {
+            setError("Unsupported file type. Please upload .md, .txt, .pdf, .docx, .srt, or .vtt");
+        }
+    }
+  };
 
   const handleYouTubeImport = async () => {
     if (!urlInput) return;
     setIsLoading(true);
     setError(null);
+    setStatusMessage('Analyzing video content...');
     try {
       const book = await generateBookFromYouTube(urlInput);
       await handleBookReady(book);
@@ -74,17 +131,20 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
       setError(err.message || "Failed to import from YouTube");
     } finally {
       setIsLoading(false);
+      setStatusMessage('');
     }
   };
 
   const handleTextImport = async () => {
     if (!textInput) return;
     setIsLoading(true);
+    setStatusMessage('AI is formatting your text...');
     try {
         const book = await generateBookFromText(textInput, "Imported Text");
         await handleBookReady(book);
     } finally {
         setIsLoading(false);
+        setStatusMessage('');
     }
   };
 
@@ -214,26 +274,69 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
 
                   <div className="p-8 md:p-12 min-h-[320px] flex items-center justify-center bg-white">
                       {importType === 'file' && (
-                          <div className="w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+                          <div className="w-full animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
+                              {/* AI Toggle */}
+                              <div className="flex items-center justify-between p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                                <div className="flex items-center gap-3">
+                                   <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                                     <Wand2 size={20} />
+                                   </div>
+                                   <div>
+                                     <div className="font-semibold text-indigo-900">Smart Format with AI</div>
+                                     <div className="text-xs text-indigo-700/70">Convert transcripts/PDFs into chapters</div>
+                                   </div>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                  <input 
+                                    type="checkbox" 
+                                    className="sr-only peer" 
+                                    checked={smartFormat} 
+                                    onChange={(e) => setSmartFormat(e.target.checked)} 
+                                  />
+                                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                </label>
+                              </div>
+
                               <label 
                                   htmlFor="file-upload" 
-                                  className="group relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed border-emerald-200 rounded-2xl cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/50 transition-all"
+                                  className={`
+                                    group relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-2xl cursor-pointer transition-all
+                                    ${isDragging 
+                                        ? 'border-emerald-500 bg-emerald-50 scale-[1.02] shadow-lg' 
+                                        : 'border-emerald-200 hover:border-emerald-500 hover:bg-emerald-50/50'}
+                                  `}
+                                  onDragOver={handleDragOver}
+                                  onDragLeave={handleDragLeave}
+                                  onDrop={handleDrop}
                               >
-                                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                    <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
-                                       <Upload className="w-8 h-8 text-emerald-600" />
+                                  {isLoading ? (
+                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <Loader2 className="w-12 h-12 text-emerald-500 animate-spin mb-4" />
+                                        <p className="text-lg text-emerald-800 font-medium">{statusMessage}</p>
+                                     </div>
+                                  ) : (
+                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
+                                            {isDragging ? <ArrowRight className="w-8 h-8 text-emerald-600" /> : <Upload className="w-8 h-8 text-emerald-600" />}
+                                        </div>
+                                        <p className="mb-2 text-lg text-emerald-800 font-medium">Click to upload or drag and drop</p>
+                                        <p className="text-sm text-emerald-500 flex items-center gap-2">
+                                           <FileType size={14} /> MD, TXT, PDF, DOCX, SRT
+                                        </p>
                                     </div>
-                                    <p className="mb-2 text-lg text-emerald-800 font-medium">Click to upload or drag and drop</p>
-                                    <p className="text-sm text-emerald-500">.MD or .TXT files supported</p>
-                                  </div>
+                                  )}
                                   <input 
                                     id="file-upload" 
                                     type="file" 
                                     className="hidden" 
-                                    accept=".md,.txt,.markdown"
+                                    accept=".md,.txt,.markdown,.pdf,.docx,.srt,.vtt"
                                     onChange={handleFileUpload}
+                                    disabled={isLoading}
                                   />
                               </label>
+                              {error && (
+                                <div className="text-center text-rose-500 text-sm font-medium">{error}</div>
+                              )}
                           </div>
                       )}
 
@@ -265,7 +368,7 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
                               >
                                   {isLoading ? (
                                       <>
-                                          <Loader2 className="animate-spin" /> Analyzing Content...
+                                          <Loader2 className="animate-spin" /> {statusMessage || 'Processing...'}
                                       </>
                                   ) : (
                                       <>
