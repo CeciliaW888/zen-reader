@@ -126,6 +126,9 @@ export const generateBookFromYouTube = async (url: string): Promise<Book> => {
   const ai = getAIClient();
   if (!ai) throw new Error("API Key missing");
 
+  // We do NOT use JSON schema here because combining JSON schema with Google Search tool
+  // often leads to stability issues or conflicts in the model output format.
+  // Instead, we request a specific plain text/markdown format.
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
     contents: `I have a YouTube video URL: ${url}. 
@@ -133,43 +136,75 @@ export const generateBookFromYouTube = async (url: string): Promise<Book> => {
     Then, transform this content into a structured narrative article by strictly following the "Podcast Episode → Narrative Article" skill provided in the system instructions.
     
     CRITICAL OUTPUT REQUIREMENTS:
-    1.  **Single Document**: Return the entire result as one Markdown string.
-    2.  **Headings**: Use Markdown headers (##) for sections.
-    3.  **No "Introduction" Heading**: Do not label the first section "Introduction". Just start the narrative.
-    4.  **No Title Header**: Do not put the Book Title as a # Header in the content.
+    1.  **Format**: Start with the title on the very first line prefixed with "TITLE: ".
+    2.  **Content**: Follow the title immediately with the book content in Markdown.
+    3.  **Headings**: Use Markdown headers (##) for sections.
+    4.  **No "Introduction" Heading**: Do not label the first section "Introduction". Just start the narrative.
     
-    Return the result as a strictly valid JSON object.`,
+    Example Output:
+    TITLE: The Future of AI
+    > **Source:** ...
+    
+    ## The Beginning
+    [Content here...]
+    `,
     config: {
       tools: [{googleSearch: {}}],
       systemInstruction: PODCAST_TO_BOOK_SKILL,
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          bookTitle: { type: Type.STRING, description: "A catchy, high-impact title" },
-          content: { type: Type.STRING, description: "The full narrative content in Markdown format. Use ## About the Guest." }
-        },
-        required: ['bookTitle', 'content']
-      }
     }
   });
 
-  const data = JSON.parse(response.text || "{}");
+  let text = response.text || "";
   
-  if (!data.content) {
-    throw new Error("Could not generate content from this URL. Try pasting the transcript manually.");
+  if (!text) {
+    throw new Error("Could not generate content. The model returned empty text. Please try again.");
   }
+
+  // Extract Sources from Grounding Metadata
+  const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+  let sourcesMarkdown = "";
+  if (groundingChunks) {
+      const sources = groundingChunks
+        .map((chunk: any) => chunk.web?.uri ? `[${chunk.web.title || 'Source'}](${chunk.web.uri})` : null)
+        .filter(Boolean);
+      
+      // Deduplicate sources
+      const uniqueSources = [...new Set(sources)];
+      
+      if (uniqueSources.length > 0) {
+          sourcesMarkdown = "\n\n---\n\n## Sources & References\n" + uniqueSources.map((s: string) => `- ${s}`).join('\n');
+      }
+  }
+
+  // Parse Title from the first line
+  let title = "YouTube Summary";
+  // Regex to match "TITLE: ..." at start of string, handling potential whitespace
+  const titleMatch = text.match(/^\s*TITLE:\s*(.+)$/m);
+  
+  if (titleMatch) {
+      title = titleMatch[1].trim();
+      // Remove the title line from the text
+      text = text.replace(/^\s*TITLE:\s*.+$/m, '').trim();
+  } else {
+      // Fallback: Check for H1
+      const h1Match = text.match(/^#\s+(.+)$/m);
+      if (h1Match) {
+          title = h1Match[1].trim();
+      }
+  }
+
+  const fullContent = text + sourcesMarkdown;
 
   return {
     id: crypto.randomUUID(),
-    title: data.bookTitle || "YouTube Summary",
+    title: title,
     fileName: url,
     dateAdded: Date.now(),
     source: 'youtube',
     chapters: [{
       id: 'chap-0',
       title: 'Full Text',
-      content: data.content,
+      content: fullContent,
       order: 0
     }]
   };
