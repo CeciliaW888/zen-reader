@@ -478,10 +478,19 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
                                   <input
                                       type="text"
                                       placeholder="https://youtube.com/watch?v=..."
-                                      className="w-full pl-4 pr-4 py-4 bg-emerald-50/30 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-400 outline-none text-emerald-900 placeholder-emerald-400/70 transition-all"
+                                      className="w-full pl-4 pr-12 py-4 bg-emerald-50/30 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-400 outline-none text-emerald-900 placeholder-emerald-400/70 transition-all"
                                       value={urlInput}
                                       onChange={(e) => setUrlInput(e.target.value)}
                                   />
+                                  {urlInput && (
+                                    <button
+                                      onClick={() => { setUrlInput(''); setError(null); }}
+                                      className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-emerald-400 hover:text-rose-500 transition-colors"
+                                      title="Clear URL"
+                                    >
+                                      <X size={20} />
+                                    </button>
+                                  )}
                               </div>
                                {error && <div className="text-rose-500 text-sm font-medium px-2 flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-rose-500" />{error}</div>}
                               <button
@@ -504,12 +513,23 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
 
                       {importType === 'text' && (
                            <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                              <textarea
-                                  placeholder="Paste your article, notes, or story here..."
-                                  className="w-full p-4 bg-emerald-50/30 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-400 outline-none h-48 resize-none text-emerald-900 placeholder-emerald-400/70 transition-all"
-                                  value={textInput}
-                                  onChange={(e) => setTextInput(e.target.value)}
-                              />
+                              <div className="relative w-full">
+                                <textarea
+                                    placeholder="Paste your article, notes, or story here..."
+                                    className="w-full p-4 bg-emerald-50/30 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-400 outline-none h-48 resize-none text-emerald-900 placeholder-emerald-400/70 transition-all"
+                                    value={textInput}
+                                    onChange={(e) => setTextInput(e.target.value)}
+                                />
+                                {textInput && (
+                                  <button
+                                    onClick={() => { setTextInput(''); setError(null); }}
+                                    className="absolute top-3 right-3 p-2 bg-white/50 hover:bg-white text-emerald-600 rounded-lg shadow-sm border border-emerald-100 transition-all backdrop-blur-sm"
+                                    title="Clear text"
+                                  >
+                                    <X size={18} />
+                                  </button>
+                                )}
+                              </div>
                               <button
                                   onClick={handleTextImport}
                                   disabled={isLoading || !textInput}
