@@ -174,6 +174,7 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
   
   const handleExportBackup = async () => {
     try {
+        setStatusMessage("Preparing backup...");
         const json = await exportLibraryAsJSON();
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -184,8 +185,8 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        setStatusMessage("Library exported successfully!");
-        setTimeout(() => setStatusMessage(""), 3000);
+        setStatusMessage("Backup downloaded!");
+        setTimeout(() => setStatusMessage(""), 2000);
     } catch (err) {
         console.error(err);
         setError("Failed to export library");
@@ -197,21 +198,27 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
     if (!file) return;
     
     setIsLoading(true);
-    setStatusMessage("Restoring library...");
+    setStatusMessage("Reading backup file...");
     setError(null);
     
     try {
         const text = await file.text();
         const count = await importLibraryFromJSON(text);
         await loadLibrary();
-        setStatusMessage(`Successfully restored ${count} books.`);
-        setTimeout(() => setStatusMessage(""), 3000);
-        setShowSettings(false); // close modal on success
+        setStatusMessage(`Success! Restored ${count} books.`);
+        
+        // Wait a moment so user sees the success message before closing
+        setTimeout(() => {
+            setShowSettings(false);
+            setStatusMessage("");
+        }, 1500);
     } catch (err) {
         console.error(err);
-        setError("Failed to import backup. Ensure the file is a valid JSON backup.");
+        setError("Invalid backup file. Please ensure it is a valid .json file from ZenReader.");
     } finally {
         setIsLoading(false);
+        // Reset the input so the same file can be selected again if needed
+        e.target.value = '';
     }
   };
 
@@ -253,10 +260,11 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
             </button>
             <button
                onClick={() => setShowSettings(true)}
-               className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors ml-2"
+               className="flex items-center gap-2 px-3 py-2 text-emerald-700 hover:bg-emerald-100 rounded-lg transition-colors ml-2 border border-emerald-200 shadow-sm bg-white"
                title="Settings & Backup"
             >
-                <Settings size={20} />
+                <Settings size={18} />
+                <span className="hidden sm:inline font-medium">Backup / Restore</span>
             </button>
         </div>
       </nav>
@@ -267,7 +275,7 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
             <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-emerald-100">
                 <div className="p-4 border-b border-emerald-50 flex justify-between items-center bg-emerald-50/30">
                     <h3 className="font-serif font-bold text-lg text-emerald-900 flex items-center gap-2">
-                        <Settings size={20} /> Library Settings
+                        <Settings size={20} /> Backup & Restore
                     </h3>
                     <button onClick={() => setShowSettings(false)} className="p-1 hover:bg-emerald-100 rounded-full text-emerald-600 transition-colors">
                         <X size={20} />
@@ -277,22 +285,27 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
                     <div>
                         <h4 className="font-semibold text-emerald-900 mb-2">Sync Devices</h4>
                         <p className="text-sm text-emerald-600 mb-4 leading-relaxed">
-                            ZenReader stores your books locally on this device. To move your library to your iPhone or another computer, export a backup here and import it on the other device.
+                            To read your books on another device:
                         </p>
+                        <ol className="list-decimal list-inside text-sm text-emerald-600 mb-4 space-y-1 ml-1">
+                            <li>Export a backup from this device</li>
+                            <li>Send the file to your other device</li>
+                            <li>Click 'Import Backup' on the new device</li>
+                        </ol>
                         
                         <div className="grid grid-cols-2 gap-4">
                             <button 
                                 onClick={handleExportBackup}
-                                className="flex flex-col items-center justify-center gap-2 p-4 border border-emerald-200 rounded-xl hover:bg-emerald-50 hover:border-emerald-300 transition-all group"
+                                className="flex flex-col items-center justify-center gap-2 p-4 border border-emerald-200 rounded-xl hover:bg-emerald-50 hover:border-emerald-300 transition-all group bg-emerald-50/30"
                             >
-                                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform shadow-sm border border-emerald-200">
                                     <Download size={20} />
                                 </div>
                                 <span className="text-sm font-medium text-emerald-800">Export Backup</span>
                             </button>
 
-                            <label className="flex flex-col items-center justify-center gap-2 p-4 border border-emerald-200 rounded-xl hover:bg-emerald-50 hover:border-emerald-300 transition-all cursor-pointer group">
-                                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                            <label className="flex flex-col items-center justify-center gap-2 p-4 border border-emerald-200 rounded-xl hover:bg-emerald-50 hover:border-emerald-300 transition-all cursor-pointer group bg-emerald-50/30">
+                                <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform shadow-sm border border-emerald-200">
                                     <UploadCloud size={20} />
                                 </div>
                                 <span className="text-sm font-medium text-emerald-800">Import Backup</span>
@@ -302,13 +315,13 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) =>
                     </div>
                     
                     {statusMessage && (
-                        <div className="p-3 bg-emerald-50 text-emerald-700 text-sm rounded-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
-                             {isLoading && <Loader2 size={14} className="animate-spin" />}
+                        <div className="p-3 bg-emerald-100 text-emerald-800 text-sm font-medium rounded-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 border border-emerald-200">
+                             {isLoading ? <Loader2 size={16} className="animate-spin" /> : <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>}
                              {statusMessage}
                         </div>
                     )}
                     {error && (
-                        <div className="p-3 bg-rose-50 text-rose-700 text-sm rounded-lg animate-in fade-in slide-in-from-bottom-2">
+                        <div className="p-3 bg-rose-50 text-rose-700 text-sm rounded-lg animate-in fade-in slide-in-from-bottom-2 border border-rose-100">
                             {error}
                         </div>
                     )}
