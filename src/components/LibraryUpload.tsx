@@ -494,7 +494,7 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded, init
                   </button>
                 </div>
 
-                <div className="p-8 md:p-12 min-h-[320px] flex items-center justify-center bg-white">
+                <div className="p-6 md:p-8 min-h-[320px] flex flex-col bg-white">
                   {/* Shared Smart Format Settings - Rendered for each active tab that needs it */}
                   {['file', 'youtube', 'text'].includes(importType) && (
                     <div className="flex flex-col gap-4 p-4 mb-6 bg-indigo-50 rounded-xl border border-indigo-100 animate-in fade-in slide-in-from-top-1">
