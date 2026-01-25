@@ -411,7 +411,7 @@ export const Reader: React.FC<ReaderProps> = ({
             )}
 
             {/* Only show Title if it's not just the Book Title again or "Full Text" legacy */}
-            {(book.chapters.length > 1 || currentChapter.title !== book.title) && (
+            {(book.chapters.length > 1 || (currentChapter.title !== book.title && currentChapter.title !== 'Full Text')) && (
               <h1 className="mb-8">{currentChapter.title}</h1>
             )}
 
