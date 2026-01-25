@@ -2,7 +2,7 @@ import { ReaderSettings } from './types';
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
   theme: 'light',
-  fontSize: 'base',
+  fontSize: 3, // Default to ~base
   fontFamily: 'serif',
 };
 
@@ -49,9 +49,13 @@ export const THEME_STYLES = {
   }
 };
 
-export const FONT_SIZES = {
-  sm: 'prose-sm',
-  base: 'prose-base',
-  lg: 'prose-lg',
-  xl: 'prose-xl',
+export const FONT_SIZES: Record<number, string> = {
+  1: 'prose-xs',
+  2: 'prose-sm',
+  3: 'prose-base',
+  4: 'prose-lg',
+  5: 'prose-xl',
+  6: 'prose-2xl',
+  7: 'text-2xl leading-loose', // Custom classes for very large
+  8: 'text-3xl leading-loose',
 };

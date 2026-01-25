@@ -149,9 +149,9 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded, init
     if (!urlInput) return;
     setIsLoading(true);
     setError(null);
-    setStatusMessage('Analyzing video content...');
+    setStatusMessage(smartFormat ? 'AI is watching the video & writing a book...' : 'Fetching transcript...');
     try {
-      const book = await generateBookFromYouTube(urlInput);
+      const book = await generateBookFromYouTube(urlInput, smartFormat, targetLanguage);
       await handleBookReady(book);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to import from YouTube";
@@ -165,10 +165,31 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded, init
   const handleTextImport = async () => {
     if (!textInput) return;
     setIsLoading(true);
-    setStatusMessage('AI is formatting your text...');
+    setStatusMessage(smartFormat ? 'AI is formatting and translating...' : 'Importing text...');
     try {
-      const book = await generateBookFromText(textInput, "Imported Text");
-      await handleBookReady(book);
+      if (smartFormat) {
+        const book = await generateBookFromText(textInput, "Imported Text", targetLanguage);
+        await handleBookReady(book);
+      } else {
+        // Direct import without AI
+        const newBook: Book = {
+          id: crypto.randomUUID(),
+          title: "Imported Text",
+          chapters: [{
+            id: 'chap-0',
+            title: 'Content',
+            content: textInput,
+            order: 0
+          }],
+          fileName: 'pasted.txt',
+          dateAdded: Date.now(),
+          source: 'text'
+        };
+        await handleBookReady(newBook);
+      }
+    } catch (err: unknown) {
+      console.error(err);
+      setError("Failed to import text");
     } finally {
       setIsLoading(false);
       setStatusMessage('');
@@ -474,51 +495,57 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded, init
                 </div>
 
                 <div className="p-8 md:p-12 min-h-[320px] flex items-center justify-center bg-white">
-                  {importType === 'file' && (
-                    <div className="w-full animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
-                      {/* AI Toggle & Language Selector */}
-                      <div className="flex flex-col gap-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
-                              <Wand2 size={20} />
-                            </div>
-                            <div>
-                              <div className="font-semibold text-indigo-900">Smart Format with AI</div>
-                              <div className="text-xs text-indigo-700/70">Convert transcripts/PDFs into chapters</div>
+                  {/* Shared Smart Format Settings - Rendered for each active tab that needs it */}
+                  {['file', 'youtube', 'text'].includes(importType) && (
+                    <div className="flex flex-col gap-4 p-4 mb-6 bg-indigo-50 rounded-xl border border-indigo-100 animate-in fade-in slide-in-from-top-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                            <Wand2 size={20} />
+                          </div>
+                          <div>
+                            <div className="font-semibold text-indigo-900">Smart Format with AI</div>
+                            <div className="text-xs text-indigo-700/70">
+                              {importType === 'youtube'
+                                ? 'Convert video to structured book chapters'
+                                : 'Convert content into styled book chapters'}
                             </div>
                           </div>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="sr-only peer"
-                              checked={smartFormat}
-                              onChange={(e) => setSmartFormat(e.target.checked)}
-                            />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-                          </label>
                         </div>
-
-                        {smartFormat && (
-                          <div className="animate-in fade-in slide-in-from-top-2 pt-2 border-t border-indigo-100 flex items-center justify-between">
-                            <span className="text-sm font-medium text-indigo-900">Target Language:</span>
-                            <select
-                              className="bg-white border border-indigo-200 text-indigo-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 outline-none"
-                              value={targetLanguage}
-                              onChange={(e) => setTargetLanguage(e.target.value)}
-                            >
-                              <option value="original">Original Language</option>
-                              <option value="English">English</option>
-                              <option value="Chinese">Chinese (Simplified)</option>
-                              <option value="Spanish">Spanish</option>
-                              <option value="French">French</option>
-                              <option value="German">German</option>
-                              <option value="Japanese">Japanese</option>
-                            </select>
-                          </div>
-                        )}
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="sr-only peer"
+                            checked={smartFormat}
+                            onChange={(e) => setSmartFormat(e.target.checked)}
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                        </label>
                       </div>
 
+                      {smartFormat && (
+                        <div className="animate-in fade-in slide-in-from-top-2 pt-2 border-t border-indigo-100 flex items-center justify-between">
+                          <span className="text-sm font-medium text-indigo-900">Target Language:</span>
+                          <select
+                            className="bg-white border border-indigo-200 text-indigo-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 outline-none"
+                            value={targetLanguage}
+                            onChange={(e) => setTargetLanguage(e.target.value)}
+                          >
+                            <option value="original">Original Language</option>
+                            <option value="English">English</option>
+                            <option value="Chinese">Chinese (Simplified)</option>
+                            <option value="Spanish">Spanish</option>
+                            <option value="French">French</option>
+                            <option value="German">German</option>
+                            <option value="Japanese">Japanese</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {importType === 'file' && (
+                    <div className="w-full animate-in fade-in slide-in-from-bottom-2 duration-300 space-y-6">
 
                       <label
                         htmlFor="file-upload"

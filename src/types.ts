@@ -17,7 +17,7 @@ export interface Book {
 }
 
 export type Theme = 'light' | 'sepia' | 'dark' | 'forest' | 'midnight';
-export type FontSize = 'sm' | 'base' | 'lg' | 'xl';
+export type FontSize = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8; // 1 (Smallest) to 8 (Largest)
 
 export interface ReaderSettings {
   theme: Theme;

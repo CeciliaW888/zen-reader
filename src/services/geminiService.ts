@@ -179,7 +179,7 @@ export const answerQuestion = async (context: string, question: string, language
   }
 };
 
-export const generateBookFromYouTube = async (url: string): Promise<Book> => {
+export const generateBookFromYouTube = async (url: string, smartFormat: boolean = true, targetLanguage: string = 'original'): Promise<Book> => {
   const ai = getAIClient();
   if (!ai) throw new Error("API Key missing");
 
@@ -189,6 +189,21 @@ export const generateBookFromYouTube = async (url: string): Promise<Book> => {
 
   // Use pro models for complex reasoning like researching and structuring a book
   try {
+    const langInstruction = getLanguageInstruction(targetLanguage);
+
+    // Config based on Smart Format
+    let systemInstruction = smartFormat
+      ? PODCAST_TO_BOOK_SKILL
+      : `You are a helpful assistant. Get the transcript or a detailed textual representation of this video content.
+         1. **Format**: Return a single Markdown document.
+         2. **Title**: Start with "TITLE: <Video Title>".
+         3. **Content**: Provide the content directly.
+         ${langInstruction}`;
+
+    if (smartFormat) {
+      systemInstruction += `\n\n${langInstruction}`;
+    }
+
     const response = await generateContentWithFallback(ai, YOUTUBE_MODELS, {
       contents: `I have a YouTube video URL: ${url}. 
         I need you to perform a Google Search to find the transcript, summary, or detailed content of this SPECIFIC video.
@@ -196,13 +211,13 @@ export const generateBookFromYouTube = async (url: string): Promise<Book> => {
         STEP 1: Search for the video URL to identify the exact Title and Channel.
         STEP 2: Search for the transcript or a detailed summary of THIS specific video.
         STEP 3: If you cannot find the content for THIS video, STOP and return "ERROR: Content not found". DO NOT HALLUCINATE content from other similar videos.
-        STEP 4: If content is found, transform it into a structured narrative article by strictly following the "Podcast Episode → Narrative Article" skill provided below.
+        STEP 4: ${smartFormat
+          ? 'If content is found, transform it into a structured narrative article by strictly following the "Podcast Episode → Narrative Article" skill provided below.'
+          : 'If content is found, simply output the transcript or detailed summary as is, without creative rewriting.'}
         
         CRITICAL OUTPUT REQUIREMENTS:
         1.  **Format**: Start with the title on the very first line prefixed with "TITLE: ".
         2.  **Content**: Follow the title immediately with the book content in Markdown.
-        3.  **Headings**: Use Markdown headers (##) for sections.
-        4.  **No "Introduction" Heading**: Do not label the first section "Introduction". Just start the narrative.
         
         Example Output:
         TITLE: The Future of AI
@@ -213,7 +228,7 @@ export const generateBookFromYouTube = async (url: string): Promise<Book> => {
         `,
       config: {
         tools: [{ googleSearch: {} }],
-        systemInstruction: PODCAST_TO_BOOK_SKILL,
+        systemInstruction: systemInstruction,
       }
     });
 
@@ -264,6 +279,7 @@ export const generateBookFromYouTube = async (url: string): Promise<Book> => {
       fileName: url,
       dateAdded: Date.now(),
       source: 'youtube',
+      language: targetLanguage === 'original' ? undefined : targetLanguage,
       chapters: [{
         id: 'chap-0',
         title: 'Full Text',
