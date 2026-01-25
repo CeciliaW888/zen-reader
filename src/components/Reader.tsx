@@ -189,11 +189,13 @@ export const Reader: React.FC<ReaderProps> = ({
     // 2. Find Highlight Matches
     // Note: This matches ALL occurrences of the highlighted text string.
     chapterHighlights.forEach((h, index) => {
-      // Escape for regex
+      // Escape for regex but allow flexible whitespace
       if (!h.text.trim()) return;
       const escapedText = h.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      // Look for whole words/phrases roughly? strict match for now.
-      const regex = new RegExp(escapedText, 'g');
+      // Replace explicit spaces with loose whitespace matcher to handle Markdown formatting differences
+      const flexibleRegexPattern = escapedText.replace(/\s+/g, '\\s+');
+
+      const regex = new RegExp(flexibleRegexPattern, 'gi');
       let match;
       while ((match = regex.exec(text)) !== null) {
         matches.push({
