@@ -92,8 +92,6 @@ export const Reader: React.FC<ReaderProps> = ({
   const handleAddHighlight = async () => {
     if (!selectedText) return;
 
-    // In a real app we'd identify the exact node path or offset. 
-    // Here we will use simple text matching, which is fragile for duplicates but sufficient for this demo.
     const newHighlight: Highlight = {
       id: crypto.randomUUID(),
       chapterId: currentChapterId,
@@ -109,14 +107,15 @@ export const Reader: React.FC<ReaderProps> = ({
     };
 
     // Callback to parent to persist
-    // We will save to DB.
     await saveBook(updatedBook);
 
     // We need to notify parent to update `book` prop. 
-    if (onBookUpdate) onBookUpdate(updatedBook);
+    if (onBookUpdate) {
+      onBookUpdate(updatedBook);
+    }
 
     setSelectedText(null);
-    setActiveHighlightId(newHighlight.id); // Open it to edit note immediately?
+    setActiveHighlightId(newHighlight.id);
 
     // Clear selection
     window.getSelection()?.removeAllRanges();
