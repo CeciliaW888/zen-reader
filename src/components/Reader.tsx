@@ -174,13 +174,18 @@ export const Reader: React.FC<ReaderProps> = ({
 
     // 1. Find Search Matches
     if (searchQuery.trim()) {
-      const regex = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      // Escape special regex characters in the query
+      const escapedQuery = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escapedQuery, 'gi');
       let match;
       while ((match = regex.exec(text)) !== null) {
         matches.push({
           start: match.index,
           end: match.index + match[0].length,
           type: 'search',
+          // Lower priority than user notes, but should still render if no overlap. 
+          // If overlap, we might want to show both or merge? 
+          // For now, simple priority: if note exists, it wins.
           priority: 1
         });
       }
