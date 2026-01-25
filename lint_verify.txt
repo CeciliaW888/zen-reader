@@ -1,0 +1,34 @@
+
+> zenreader@0.0.0 lint
+> eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0
+
+
+C:\Users\cecil\Repos\ZenReader\components\Reader.tsx
+  36:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  40:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  44:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\cecil\Repos\ZenReader\components\Sidebar.tsx
+  2:13  error  'Book' is defined but never used      @typescript-eslint/no-unused-vars
+  2:19  error  'Type' is defined but never used      @typescript-eslint/no-unused-vars
+  2:25  error  'Settings' is defined but never used  @typescript-eslint/no-unused-vars
+  3:28  error  'Chapter' is defined but never used   @typescript-eslint/no-unused-vars
+
+C:\Users\cecil\Repos\ZenReader\services\geminiService.ts
+  14:1  error  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-unused-vars')
+
+C:\Users\cecil\Repos\ZenReader\src\App.test.tsx
+  2:18  error  'screen' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\cecil\Repos\ZenReader\utils\fileHelpers.ts
+   5:1   error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
+  74:25  error  Unexpected any. Specify a different type                                                                             @typescript-eslint/no-explicit-any
+
+C:\Users\cecil\Repos\ZenReader\utils\markdownProcessor.ts
+  15:19  error  Unnecessary escape character: \-  no-useless-escape
+  16:15  error  Unnecessary escape character: \-  no-useless-escape
+  16:17  error  Unnecessary escape character: \-  no-useless-escape
+
+Γ£û 14 problems (14 errors, 0 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+

@@ -2,14 +2,14 @@ import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
 
 // Handle potential ESM/CJS interop issues with pdfjs-dist
-// @ts-ignore
+// @ts-expect-error
 const pdfjs = pdfjsLib.default || pdfjsLib;
 
 // Ensure worker is set up safely
 if (typeof window !== 'undefined' && pdfjs.GlobalWorkerOptions) {
-    if (!pdfjs.GlobalWorkerOptions.workerSrc) {
-        pdfjs.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-    }
+  if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+    pdfjs.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  }
 }
 
 export const extractTextFromFile = async (file: File): Promise<string> => {
@@ -59,22 +59,22 @@ const extractTextFromDOCX = (file: File): Promise<string> => {
 };
 
 const extractTextFromPDF = async (file: File): Promise<string> => {
-    const arrayBuffer = await file.arrayBuffer();
-    
-    // Use the resolved pdfjs instance
-    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-    
-    let fullText = '';
-    
-    // Iterate through all pages
-    for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-            .map((item: any) => item.str)
-            .join(' ');
-        fullText += pageText + '\n\n';
-    }
+  const arrayBuffer = await file.arrayBuffer();
 
-    return fullText;
+  // Use the resolved pdfjs instance
+  const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+
+  let fullText = '';
+
+  // Iterate through all pages
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items
+      .map((item: any) => item.str)
+      .join(' ');
+    fullText += pageText + '\n\n';
+  }
+
+  return fullText;
 };

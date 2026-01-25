@@ -12,8 +12,8 @@ export const slugify = (text: string): string => {
     .toLowerCase()
     .trim()
     .replace(/\s+/g, '-')     // Replace spaces with -
-    .replace(/[^\w\-]+/g, '') // Remove all non-word chars
-    .replace(/\-\-+/g, '-');  // Replace multiple - with single -
+    .replace(/[^\w-]+/g, '') // Remove all non-word chars
+    .replace(/-+/g, '-');  // Replace multiple - with single -
 };
 
 export const extractHeadings = (markdown: string): Heading[] => {
@@ -24,10 +24,10 @@ export const extractHeadings = (markdown: string): Heading[] => {
   while ((match = headingRegex.exec(markdown)) !== null) {
     const level = match[1].length;
     let text = match[2].trim();
-    
+
     // Clean up "Chapter X: " from the display text in TOC
     text = text.replace(/^Chapter\s+\d+[:.]?\s*/i, '');
-    
+
     allHeadings.push({
       id: slugify(match[2].trim()), // ID uses original text to match anchors
       text, // Display text is cleaned
@@ -41,19 +41,19 @@ export const extractHeadings = (markdown: string): Heading[] => {
   const h1Count = allHeadings.filter(h => h.level === 1).length;
 
   return allHeadings.filter((h, index) => {
-      // 1. Filter out Single H1 (Title)
-      if (h.level === 1 && h1Count === 1) return false;
+    // 1. Filter out Single H1 (Title)
+    if (h.level === 1 && h1Count === 1) return false;
 
-      // 2. Filter out "Introduction" if it is the very first item (redundant)
-      if (index === 0 && h.text.toLowerCase() === 'introduction') return false;
+    // 2. Filter out "Introduction" if it is the very first item (redundant)
+    if (index === 0 && h.text.toLowerCase() === 'introduction') return false;
 
-      return true;
+    return true;
   });
 };
 
 export const parseMarkdownToBook = (text: string, fileName: string): { title: string, chapters: Chapter[] } => {
   const lines = text.split('\n');
-  
+
   // Extract a likely title from the first H1
   const firstH1 = lines.find(l => l.startsWith('# '));
   const bookTitle = firstH1 ? firstH1.replace('# ', '').trim() : fileName.replace('.md', '');

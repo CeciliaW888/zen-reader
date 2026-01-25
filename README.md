@@ -16,5 +16,19 @@ View your app in AI Studio: https://ai.studio/apps/drive/1_FYht5f4yMIiQ4mS3LuZJ0
 1. Install dependencies:
    `npm install`
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+
+### Development Scripts
+
+- `npm run dev`: Start the development server
+- `npm run build`: Build for production
+- `npm run preview`: Preview the production build
+- `npm run lint`: Run ESLint to check for code quality issues
+- `npm run test`: Run the test suite with Vitest
+
+## Tech Stack
+
+- **Framework**: React + Vite
+- **Language**: TypeScript
+- **Styling**: TailwindCSS (inferred from class names)
+- **Testing**: Vitest + React Testing Library
+- **Linting**: ESLint + Prettier
