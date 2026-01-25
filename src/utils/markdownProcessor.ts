@@ -9,11 +9,11 @@ export interface Heading {
 export const slugify = (text: string): string => {
   return text
     .toString()
-    .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-')     // Replace spaces with -
-    .replace(/[^\w-]+/g, '') // Remove all non-word chars
-    .replace(/-+/g, '-');  // Replace multiple - with single -
+    .replace(/\s+/g, '-')           // Replace spaces with -
+    .replace(/[^\p{L}\p{N}_-]+/gu, '') // Remove non-letter, non-number chars (preserves Unicode letters)
+    .replace(/-+/g, '-')            // Replace multiple - with single -
+    .replace(/^-+|-+$/g, '');       // Remove leading/trailing dashes
 };
 
 export const extractHeadings = (markdown: string): Heading[] => {
