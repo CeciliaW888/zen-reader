@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
 import { Book as BookType, ReaderSettings } from '../types';
-import { X, Settings as SettingsIcon, Sparkles, Library, AlignLeft } from 'lucide-react';
+import { X, Settings as SettingsIcon, Sparkles, Library, AlignLeft, Download } from 'lucide-react';
 import { THEME_STYLES } from '../constants';
 import { extractHeadings } from '../utils/markdownProcessor';
+import { downloadEpub } from '../utils/epubGenerator';
 
 interface SidebarProps {
   book: BookType;
@@ -38,6 +39,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       if (window.innerWidth < 1024) onClose();
     }
+  };
+
+  const handleExport = async () => {
+    await downloadEpub(book);
   };
 
   return (
@@ -107,6 +112,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             </button>
           ))}
+        </div>
+
+        {/* Export Button */}
+        <div className="p-4 border-t border-gray-200/10 shrink-0">
+          <button
+            onClick={handleExport}
+            className={`w-full py-3 px-4 rounded-xl font-medium text-sm flex items-center justify-center gap-2 transition-all ${theme.ui} ${theme.uiHover}`}
+          >
+            <Download size={18} />
+            Export as EPUB
+          </button>
         </div>
       </div>
     </>

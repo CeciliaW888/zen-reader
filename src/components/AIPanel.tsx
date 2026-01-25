@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Sparkles, Send, Loader2, MessageSquare, BookOpen, Download } from 'lucide-react';
+import { X, Sparkles, Send, Loader2, MessageSquare, BookOpen } from 'lucide-react';
 import { THEME_STYLES } from '../constants';
 import { ReaderSettings, Chapter, Book } from '../types';
 import { summarizeBook, answerQuestion } from '../services/geminiService';
@@ -72,38 +72,6 @@ export const AIPanel: React.FC<AIPanelProps> = ({
     setIsLoading(false);
   };
 
-  const handleExportEpub = async () => {
-    // Simple EPUB export using a blob
-    // For a real implementation, use a library like 'epub-gen' or server-side generation
-    // Here we'll create a simple HTML file that can be opened
-    const content = book.chapters.map(c => `<h1>${c.title}</h1>\n${c.content}`).join('\n\n---\n\n');
-    const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>${book.title}</title>
-  <style>
-    body { font-family: Georgia, serif; max-width: 800px; margin: 2rem auto; padding: 1rem; line-height: 1.6; }
-    h1 { border-bottom: 1px solid #ccc; padding-bottom: 0.5rem; }
-  </style>
-</head>
-<body>
-  <h1>${book.title}</h1>
-  ${book.chapters.map(c => `<section><h2>${c.title}</h2><div>${c.content.replace(/\n/g, '<br>')}</div></section>`).join('\n')}
-</body>
-</html>`;
-
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${book.title.replace(/[^a-z0-9]/gi, '_')}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className={`
       fixed inset-y-0 right-0 w-full sm:w-96 z-40 transform transition-transform duration-300 ease-in-out shadow-2xl border-l
@@ -118,18 +86,9 @@ export const AIPanel: React.FC<AIPanelProps> = ({
             <Sparkles size={18} className="text-blue-500" />
             <span>AI Companion</span>
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handleExportEpub}
-              className={`p-2 rounded-md ${theme.uiHover} ${theme.text}`}
-              title="Export as HTML"
-            >
-              <Download size={18} />
-            </button>
-            <button onClick={onClose} className={`p-1 rounded-md ${theme.uiHover} ${theme.text}`}>
-              <X size={20} />
-            </button>
-          </div>
+          <button onClick={onClose} className={`p-1 rounded-md ${theme.uiHover} ${theme.text}`}>
+            <X size={20} />
+          </button>
         </div>
 
         {/* Tabs - Simplified to just Summary and Chat */}
