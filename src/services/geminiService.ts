@@ -204,16 +204,22 @@ export const generateBookFromYouTube = async (url: string, smartFormat: boolean 
       systemInstruction += `\n\n${langInstruction}`;
     }
 
-    const response = await generateContentWithFallback(ai, YOUTUBE_MODELS, {
+    const response = await generateContentWithFallback(ai, ['gemini-2.0-flash-exp', 'gemini-1.5-pro', 'gemini-2.0-pro-exp-02-05'], {
       contents: `I have a YouTube video URL: ${url}. 
         I need you to perform a Google Search to find the transcript, summary, or detailed content of this SPECIFIC video.
         
         STEP 1: Search for the video URL to identify the exact Title and Channel.
         STEP 2: Search for the transcript or a detailed summary of THIS specific video.
-        STEP 3: If you cannot find the content for THIS video, STOP and return "ERROR: Content not found". DO NOT HALLUCINATE content from other similar videos.
+        STEP 3: If you cannot find the exact transcript, perform a broad search on the main topic of the video (using the Title found in Step 1) to synthesize a comprehensive, high-quality book chapter about that subject. 
+        **Drafting Strategy if Transcript Missing:**
+        - Identify the core topic from the Title.
+        - Research this topic using Google Search tools.
+        - Write a chapter that explains this topic in depth, similar to how the video likely covered it.
+        - **Disclaimer:** If you are synthesizing based on topic research rather than a direct transcript, add a small disclaimer in the "Source" blockquote (e.g., "Source: Subject Research based on [Video Title]").
+
         STEP 4: ${smartFormat
-          ? 'If content is found, transform it into a structured narrative article by strictly following the "Podcast Episode → Narrative Article" skill provided below.'
-          : 'If content is found, simply output the transcript or detailed summary as is, without creative rewriting.'}
+          ? 'Transform the gathered information into a structured narrative article by strictly following the "Podcast Episode → Narrative Article" skill provided below.'
+          : 'Simply output the gathered content as is.'}
         
         CRITICAL OUTPUT REQUIREMENTS:
         1.  **Format**: Start with the title on the very first line prefixed with "TITLE: ".
