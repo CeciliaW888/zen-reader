@@ -8,10 +8,11 @@ import { generateBookFromYouTube, generateBookFromText } from '../services/gemin
 
 interface LibraryUploadProps {
   onBookLoaded: (book: Book) => void;
+  initialTab?: 'import' | 'library';
 }
 
-export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded }) => {
-  const [activeTab, setActiveTab] = useState<'import' | 'library'>('import');
+export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded, initialTab = 'import' }) => {
+  const [activeTab, setActiveTab] = useState<'import' | 'library'>(initialTab);
   const [importType, setImportType] = useState<'file' | 'youtube' | 'text'>('file');
   const [library, setLibrary] = useState<Book[]>([]);
   const [isLoading, setIsLoading] = useState(false);

@@ -33,7 +33,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
-  
+
   // Reset chapter summary when chapter changes, but keep book overview
   useEffect(() => {
     setSummary(null);
@@ -51,7 +51,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   const handleSummarize = async () => {
     if (summary) return;
     setIsLoading(true);
-    const text = await summarizeChapter(currentChapter.content);
+    const text = await summarizeChapter(currentChapter.content, book.language);
     setSummary(text);
     setIsLoading(false);
   };
@@ -61,21 +61,21 @@ export const AIPanel: React.FC<AIPanelProps> = ({
     setIsLoading(true);
     // Aggregate content (limit to reasonable size)
     const fullContent = book.chapters.map(c => c.content).join('\n\n');
-    const text = await summarizeBook(fullContent);
+    const text = await summarizeBook(fullContent, book.language);
     setBookOverview(text);
     setIsLoading(false);
   }
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
-    
+
     const newMessage: Message = { role: 'user', content: inputValue };
     setChatMessages(prev => [...prev, newMessage]);
     setInputValue('');
     setIsLoading(true);
 
-    const response = await answerQuestion(currentChapter.content, newMessage.content);
-    
+    const response = await answerQuestion(currentChapter.content, newMessage.content, book.language);
+
     setChatMessages(prev => [...prev, { role: 'ai', content: response }]);
     setIsLoading(false);
   };
@@ -103,31 +103,28 @@ export const AIPanel: React.FC<AIPanelProps> = ({
         <div className="flex p-2 gap-1 border-b border-gray-200/10">
           <button
             onClick={() => setActiveTab('summary')}
-            className={`flex-1 py-2 text-xs font-medium rounded-md transition-colors ${
-              activeTab === 'summary' 
-                ? 'bg-blue-50 text-blue-600' 
+            className={`flex-1 py-2 text-xs font-medium rounded-md transition-colors ${activeTab === 'summary'
+                ? 'bg-blue-50 text-blue-600'
                 : `${theme.text} hover:bg-black/5`
-            }`}
+              }`}
           >
             Chapter
           </button>
           <button
             onClick={() => setActiveTab('overview')}
-            className={`flex-1 py-2 text-xs font-medium rounded-md transition-colors ${
-              activeTab === 'overview' 
-                ? 'bg-blue-50 text-blue-600' 
+            className={`flex-1 py-2 text-xs font-medium rounded-md transition-colors ${activeTab === 'overview'
+                ? 'bg-blue-50 text-blue-600'
                 : `${theme.text} hover:bg-black/5`
-            }`}
+              }`}
           >
             Book Info
           </button>
           <button
             onClick={() => setActiveTab('chat')}
-            className={`flex-1 py-2 text-xs font-medium rounded-md transition-colors ${
-              activeTab === 'chat' 
-                ? 'bg-blue-50 text-blue-600' 
+            className={`flex-1 py-2 text-xs font-medium rounded-md transition-colors ${activeTab === 'chat'
+                ? 'bg-blue-50 text-blue-600'
                 : `${theme.text} hover:bg-black/5`
-            }`}
+              }`}
           >
             Chat
           </button>
@@ -137,65 +134,65 @@ export const AIPanel: React.FC<AIPanelProps> = ({
         <div className="flex-1 overflow-y-auto p-4">
           {activeTab === 'summary' && (
             <div className="space-y-4">
-               <div className={`text-sm opacity-70 ${theme.text}`}>
-                 Get a quick overview of <span className="font-semibold">"{currentChapter.title}"</span>.
-               </div>
-               
-               {!summary && !isLoading && (
-                 <button
-                   onClick={handleSummarize}
-                   className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 font-medium"
-                 >
-                   <Sparkles size={18} />
-                   Generate Summary
-                 </button>
-               )}
+              <div className={`text-sm opacity-70 ${theme.text}`}>
+                Get a quick overview of <span className="font-semibold">"{currentChapter.title}"</span>.
+              </div>
 
-               {isLoading && !summary && (
-                 <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-3">
-                   <Loader2 size={24} className="animate-spin text-blue-500" />
-                   <span className="text-xs">Analyzing chapter...</span>
-                 </div>
-               )}
+              {!summary && !isLoading && (
+                <button
+                  onClick={handleSummarize}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 font-medium"
+                >
+                  <Sparkles size={18} />
+                  Generate Summary
+                </button>
+              )}
 
-               {summary && (
-                 <div className={`prose prose-sm ${theme.prose} bg-black/5 p-4 rounded-xl`}>
-                   <ReactMarkdown>{summary}</ReactMarkdown>
-                 </div>
-               )}
+              {isLoading && !summary && (
+                <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-3">
+                  <Loader2 size={24} className="animate-spin text-blue-500" />
+                  <span className="text-xs">Analyzing chapter...</span>
+                </div>
+              )}
+
+              {summary && (
+                <div className={`prose prose-sm ${theme.prose} bg-black/5 p-4 rounded-xl`}>
+                  <ReactMarkdown>{summary}</ReactMarkdown>
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === 'overview' && (
-             <div className="space-y-4">
-                <div className={`text-sm opacity-70 ${theme.text}`}>
-                  Generate a "Back Cover" style summary for <span className="font-semibold">{book.title}</span>.
+            <div className="space-y-4">
+              <div className={`text-sm opacity-70 ${theme.text}`}>
+                Generate a "Back Cover" style summary for <span className="font-semibold">{book.title}</span>.
+              </div>
+
+              {!bookOverview && !isLoading && (
+                <button
+                  onClick={handleBookOverview}
+                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 font-medium"
+                >
+                  <BookOpen size={18} />
+                  Summarize Book
+                </button>
+              )}
+
+              {isLoading && !bookOverview && (
+                <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-3">
+                  <Loader2 size={24} className="animate-spin text-emerald-500" />
+                  <span className="text-xs">Reading whole book...</span>
                 </div>
+              )}
 
-                {!bookOverview && !isLoading && (
-                  <button
-                    onClick={handleBookOverview}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 font-medium"
-                  >
-                    <BookOpen size={18} />
-                    Summarize Book
-                  </button>
-                )}
-
-                {isLoading && !bookOverview && (
-                 <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-3">
-                   <Loader2 size={24} className="animate-spin text-emerald-500" />
-                   <span className="text-xs">Reading whole book...</span>
-                 </div>
-               )}
-
-                {bookOverview && (
-                 <div className={`prose prose-sm ${theme.prose} bg-black/5 p-4 rounded-xl`}>
-                   <h3 className="text-sm font-bold uppercase tracking-wider opacity-50 mb-2">Synopsis</h3>
-                   <ReactMarkdown>{bookOverview}</ReactMarkdown>
-                 </div>
-               )}
-             </div>
+              {bookOverview && (
+                <div className={`prose prose-sm ${theme.prose} bg-black/5 p-4 rounded-xl`}>
+                  <h3 className="text-sm font-bold uppercase tracking-wider opacity-50 mb-2">Synopsis</h3>
+                  <ReactMarkdown>{bookOverview}</ReactMarkdown>
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === 'chat' && (
@@ -206,28 +203,28 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                   <p className={`text-sm ${theme.text}`}>Ask me anything about this chapter!</p>
                 </div>
               )}
-              
+
               {chatMessages.map((msg, idx) => (
                 <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`
                     max-w-[85%] rounded-2xl px-4 py-3 text-sm
-                    ${msg.role === 'user' 
-                      ? 'bg-blue-600 text-white rounded-br-none' 
+                    ${msg.role === 'user'
+                      ? 'bg-blue-600 text-white rounded-br-none'
                       : `bg-black/5 ${theme.text} rounded-bl-none`}
                   `}>
-                     <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
                   </div>
                 </div>
               ))}
-              
+
               {isLoading && (
-                 <div className="flex justify-start">
+                <div className="flex justify-start">
                   <div className={`bg-black/5 px-4 py-3 rounded-2xl rounded-bl-none flex items-center gap-2`}>
                     <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" />
                     <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-75" />
                     <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce delay-150" />
                   </div>
-                 </div>
+                </div>
               )}
               <div ref={chatEndRef} />
             </div>

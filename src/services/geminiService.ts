@@ -120,13 +120,23 @@ Use dramatic headings.
 5. **Bio Included**: Is the "About the Guest" section included?
 `;
 
-export const summarizeChapter = async (text: string): Promise<string> => {
+// Helper to get language instruction
+const getLanguageInstruction = (language?: string) => {
+  if (language && language !== 'original') {
+    return `Answer in ${language}.`;
+  }
+  return "Answer in the same language as the text.";
+};
+
+export const summarizeChapter = async (text: string, language?: string): Promise<string> => {
   const ai = getAIClient();
   if (!ai) return "Error: API Key missing.";
 
+  const langInstruction = getLanguageInstruction(language);
+
   try {
     const response = await generateContentWithFallback(ai, FLASH_MODELS, {
-      contents: `Please provide a concise and engaging summary of the following text, capturing the main plot points or key ideas. Keep it under 200 words.\n\nText:\n${text.substring(0, 10000)}...`,
+      contents: `Please provide a concise and engaging summary of the following text, capturing the main plot points or key ideas. Keep it under 200 words. ${langInstruction}\n\nText:\n${text.substring(0, 10000)}...`,
     });
     return response.text || "Could not generate summary.";
   } catch (error) {
@@ -135,13 +145,15 @@ export const summarizeChapter = async (text: string): Promise<string> => {
   }
 };
 
-export const summarizeBook = async (bookContent: string): Promise<string> => {
+export const summarizeBook = async (bookContent: string, language?: string): Promise<string> => {
   const ai = getAIClient();
   if (!ai) return "Error: API Key missing.";
 
+  const langInstruction = getLanguageInstruction(language);
+
   try {
     const response = await generateContentWithFallback(ai, FLASH_MODELS, {
-      contents: `You are an expert literary editor. Write a compelling "Back Cover" style summary for this entire book/document. Focus on the overarching themes, main arguments, or narrative arc. \n\nBook Content (truncated):\n${bookContent.substring(0, 25000)}...`,
+      contents: `You are an expert literary editor. Write a compelling "Back Cover" style summary for this entire book/document. Focus on the overarching themes, main arguments, or narrative arc. ${langInstruction}\n\nBook Content (truncated):\n${bookContent.substring(0, 25000)}...`,
     });
     return response.text || "Could not generate book overview.";
   } catch (error) {
@@ -150,13 +162,15 @@ export const summarizeBook = async (bookContent: string): Promise<string> => {
   }
 };
 
-export const answerQuestion = async (context: string, question: string): Promise<string> => {
+export const answerQuestion = async (context: string, question: string, language?: string): Promise<string> => {
   const ai = getAIClient();
   if (!ai) return "Error: API Key missing.";
 
+  const langInstruction = getLanguageInstruction(language);
+
   try {
     const response = await generateContentWithFallback(ai, FLASH_MODELS, {
-      contents: `You are a helpful reading assistant. Answer the user's question based on the provided text context.\n\nContext:\n${context.substring(0, 15000)}\n\nQuestion: ${question}`,
+      contents: `You are a helpful reading assistant. Answer the user's question based on the provided text context. ${langInstruction}\n\nContext:\n${context.substring(0, 15000)}\n\nQuestion: ${question}`,
     });
     return response.text || "I couldn't find an answer to that.";
   } catch (error) {
@@ -275,6 +289,7 @@ export const generateBookFromText = async (text: string, title: string = "Pasted
         fileName: 'pasted.txt',
         dateAdded: Date.now(),
         source: 'text',
+        language: targetLanguage === 'original' ? undefined : targetLanguage,
         chapters: [{
           id: 'chap-0',
           title: 'Content',
@@ -296,15 +311,19 @@ export const generateBookFromText = async (text: string, title: string = "Pasted
         
         ${text.substring(0, 30000)}`,
       config: {
-        systemInstruction: `You are an expert book editor. Your goal is to organize raw text into a structured, readable Markdown document.
+        systemInstruction: `You are an expert ghostwriter and editor. Your goal is to convert raw spoken transcripts or loose text into a high-quality, professional book chapter.
 
 CRITICAL OUTPUT REQUIREMENTS:
 1. **Format**: Return a single cohesive Markdown document.
 2. **Title**: Start with the book title on the very first line, prefixed with "TITLE: ".
 3. **Headings**: You MUST use ## Headings to break the content into logical sections.
-4. **Structure**: The input text might be unstructured or dense (especially for Chinese/Asian languages). You MUST analyze the content and insert ## Headings to break it into logical sections. **ALWAYS start the main content with a ## Heading appropriate for the content (e.g., 'Introduction' or 'Overview' translated into the target language).**
-5. **No "Chapter"**: Do NOT use the word "Chapter" in headings.
-6. **No "Introduction"**: Do NOT use an "Introduction" header.
+4. **Structure**: The input text might be unstructured or dense. You MUST analyze the content and insert ## Headings to break it into logical sections. **ALWAYS start the main content with a ## Heading appropriate for the content (e.g., 'Introduction' or 'Overview' translated into the target language).**
+5. **Style & Tone (Crucial)**:
+   - **No Verbatim**: Do NOT just copy the input text. REWRITE it.
+   - **Polished Narrative**: Convert spoken language (e.g., "Can you hear me?", "Type 1 in chat", "Um, ah") into polished written prose. Remove all audience interactions, filler words, and stammering.
+   - **Book Quality**: Ensure the flow is smooth, professional, and typically found in published non-fiction books or articles.
+6. **No "Chapter"**: Do NOT use the word "Chapter" in headings.
+7. **No "Introduction"**: Do NOT use an "Introduction" header.
 
 ${languageInstruction}
 **Ensure all generated headings, titles, and structural elements are in the target language.**
@@ -338,6 +357,7 @@ ${languageInstruction}
       fileName: 'pasted.txt',
       dateAdded: Date.now(),
       source: 'text',
+      language: targetLanguage === 'original' ? undefined : targetLanguage,
       chapters: [{
         id: 'chap-0',
         title: 'Full Text',

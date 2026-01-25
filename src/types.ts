@@ -12,6 +12,7 @@ export interface Book {
   fileName: string;
   dateAdded: number; // Added for sorting
   source?: 'upload' | 'youtube' | 'text';
+  language?: string;
 }
 
 export type Theme = 'light' | 'sepia' | 'dark' | 'forest' | 'midnight';
