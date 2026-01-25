@@ -61,7 +61,7 @@ export const parseMarkdownToBook = (text: string, fileName: string): { title: st
   // Treat the entire file as a single chapter to support "Heading Navigation"
   const chapters: Chapter[] = [{
     id: 'chap-0',
-    title: 'Full Text',
+    title: bookTitle, // Use book title
     content: text,
     order: 0
   }];

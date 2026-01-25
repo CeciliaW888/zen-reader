@@ -1,16 +1,31 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { LibraryUpload } from './components/LibraryUpload';
 import { Reader } from './components/Reader';
 import { Sidebar } from './components/Sidebar';
 import { Book, ReaderSettings } from './types';
 import { DEFAULT_SETTINGS, THEME_STYLES } from './constants';
 
+
 export default function App() {
   const [book, setBook] = useState<Book | null>(null);
   const [currentChapterId, setCurrentChapterId] = useState<string>('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [settings, setSettings] = useState<ReaderSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<ReaderSettings>(() => {
+    const saved = localStorage.getItem('zenreader-settings');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse settings', e);
+      }
+    }
+    return DEFAULT_SETTINGS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('zenreader-settings', JSON.stringify(settings));
+  }, [settings]);
   const [initialLibraryTab, setInitialLibraryTab] = useState<'import' | 'library'>('import');
 
   const currentChapter = useMemo(() =>

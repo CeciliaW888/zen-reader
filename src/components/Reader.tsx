@@ -151,61 +151,110 @@ export const Reader: React.FC<ReaderProps> = ({
 
   // Helper to highlight text & Highlights
   const HighlightText = ({ text }: { text: string }) => {
-    let content: React.ReactNode = text;
-
-    // 1. Hightlight Search Terms
-    if (searchQuery.trim()) {
-      const parts = text.split(new RegExp(`(${searchQuery})`, 'gi'));
-      content = (
-        <>
-          {parts.map((part, i) =>
-            part.toLowerCase() === searchQuery.toLowerCase() ?
-              <mark key={i} className="bg-orange-300 text-slate-900 rounded-sm px-0.5">{part}</mark> :
-              part
-          )}
-        </>
-      );
-    }
-
-    // 2. Render Saved Highlights (Fragile text match)
-    // Note: If search highlighted it, this might conflict. React doesn't like nested hydrations easily.
-    // We prioritize Saved Highlights over Search if collision? Or check both?
-    // For simplicity, we just check saved highlights on the raw text if no search active?
-    // Or we try to wrap saved highlights. 
-
+    // Collect all things to highlight
     const chapterHighlights = (book.highlights || []).filter(h => h.chapterId === currentChapterId);
 
-    if (chapterHighlights.length > 0) {
-      // Very simple exact match replacement
-      chapterHighlights.forEach((h, index) => {
-        if (text.includes(h.text)) {
-          const parts = text.split(h.text);
-          // Re-assemble with highlight
-          // This is simplistic and fails if multiple same texts or overlapping.
-          // For prototype: only highlight first occurrence in this block
-          if (parts.length > 1) {
-            content = (
-              <>
-                {parts[0]}
-                <span
-                  className={`bg-yellow-200 cursor-pointer border-b-2 border-yellow-400`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setActiveHighlightId(h.id);
-                  }}
-                >
-                  {h.text}
-                  <sup className="text-[10px] font-bold text-yellow-800 ml-0.5 select-none hover:text-red-500">[{index + 1}]</sup>
-                </span>
-                {parts.slice(1).join(h.text)}
-              </>
-            );
-          }
-        }
-      });
+    // If nothing to highlight, return text
+    if (!searchQuery.trim() && chapterHighlights.length === 0) {
+      return <>{text}</>;
     }
 
-    return <>{content}</>;
+    // We will build a list of "intervals" to highlight: { start, end, type, data }
+    // Since we deal with simple string matching (limitation of this approach), we find matches.
+
+    interface Match {
+      start: number;
+      end: number;
+      type: 'search' | 'note';
+      data?: any;
+      priority: number; // Search = 1 (low), Note = 2 (high)
+    }
+
+    let matches: Match[] = [];
+
+    // 1. Find Search Matches
+    if (searchQuery.trim()) {
+      const regex = new RegExp(searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        matches.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          type: 'search',
+          priority: 1
+        });
+      }
+    }
+
+    // 2. Find Highlight Matches
+    // Note: This matches ALL occurrences of the highlighted text string.
+    chapterHighlights.forEach((h, index) => {
+      // Escape for regex
+      if (!h.text.trim()) return;
+      const escapedText = h.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Look for whole words/phrases roughly? strict match for now.
+      const regex = new RegExp(escapedText, 'g');
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        matches.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          type: 'note',
+          data: { ...h, index: index + 1 },
+          priority: 2
+        });
+      }
+    });
+
+    // Sort matches by start position
+    matches.sort((a, b) => a.start - b.start);
+
+    // Render loop
+    const elements: React.ReactNode[] = [];
+    let lastIndex = 0;
+
+    // Handle overlaps simply: skip if we are already past start
+    for (const match of matches) {
+      if (match.start < lastIndex) continue; // Skip overlapped for now (simple)
+
+      // Add text before match
+      if (match.start > lastIndex) {
+        elements.push(text.slice(lastIndex, match.start));
+      }
+
+      // Add match
+      if (match.type === 'search') {
+        elements.push(
+          <mark key={`search-${match.start}`} className="bg-orange-300 text-slate-900 rounded-sm px-0.5">
+            {text.slice(match.start, match.end)}
+          </mark>
+        );
+      } else {
+        const h = match.data;
+        elements.push(
+          <span
+            key={`note-${h.id}-${match.start}`}
+            className={`bg-yellow-200 cursor-pointer border-b-2 border-yellow-400`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveHighlightId(h.id);
+            }}
+          >
+            {text.slice(match.start, match.end)}
+            <sup className="text-[10px] font-bold text-yellow-800 ml-0.5 select-none hover:text-red-500">[{h.index}]</sup>
+          </span>
+        );
+      }
+
+      lastIndex = match.end;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      elements.push(text.slice(lastIndex));
+    }
+
+    return <>{elements}</>;
   };
 
   // Custom components to inject IDs for scrolling and highlight text
@@ -349,8 +398,16 @@ export const Reader: React.FC<ReaderProps> = ({
             prose-p:leading-relaxed
             prose-img:rounded-xl prose-img:shadow-md
           `}>
-            <span className="text-xs uppercase tracking-widest opacity-40 mb-4 block">Chapter {currentChapter.order + 1}</span>
-            <h1 className="mb-8">{currentChapter.title}</h1>
+            {/* Only show Chapter Number if multiple chapters exist */}
+            {book.chapters.length > 1 && (
+              <span className="text-xs uppercase tracking-widest opacity-40 mb-4 block">Chapter {currentChapter.order + 1}</span>
+            )}
+
+            {/* Only show Title if it's not just the Book Title again or "Full Text" legacy */}
+            {(book.chapters.length > 1 || currentChapter.title !== book.title) && (
+              <h1 className="mb-8">{currentChapter.title}</h1>
+            )}
+
             <ReactMarkdown components={markdownComponents}>
               {currentChapter.content}
             </ReactMarkdown>

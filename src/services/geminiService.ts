@@ -282,7 +282,7 @@ export const generateBookFromYouTube = async (url: string, smartFormat: boolean 
       language: targetLanguage === 'original' ? undefined : targetLanguage,
       chapters: [{
         id: 'chap-0',
-        title: 'Full Text',
+        title: title, // Use book title for the single chapter
         content: fullContent,
         order: 0
       }]
@@ -376,7 +376,7 @@ ${languageInstruction}
       language: targetLanguage === 'original' ? undefined : targetLanguage,
       chapters: [{
         id: 'chap-0',
-        title: 'Full Text',
+        title: bookTitle,
         content: generatedText,
         order: 0
       }]
@@ -393,7 +393,7 @@ ${languageInstruction}
       source: 'text',
       chapters: [{
         id: 'chap-0',
-        title: 'Full Text',
+        title: title,
         content: text,
         order: 0
       }]
