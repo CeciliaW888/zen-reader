@@ -159,6 +159,9 @@ export const Reader: React.FC<ReaderProps> = ({
       return <>{text}</>;
     }
 
+    // Debug log
+    // console.log('Highlighting check:', { text, highlights: chapterHighlights.length });
+
     // We will build a list of "intervals" to highlight: { start, end, type, data }
     // Since we deal with simple string matching (limitation of this approach), we find matches.
 
@@ -194,13 +197,18 @@ export const Reader: React.FC<ReaderProps> = ({
     // 2. Find Highlight Matches
     // Note: This matches ALL occurrences of the highlighted text string.
     chapterHighlights.forEach((h, index) => {
-      // Escape for regex but allow flexible whitespace
       if (!h.text.trim()) return;
-      const escapedText = h.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      // Replace explicit spaces with loose whitespace matcher to handle Markdown formatting differences
-      const flexibleRegexPattern = escapedText.replace(/\s+/g, '\\s+');
 
-      const regex = new RegExp(flexibleRegexPattern, 'gi');
+      // Normalize both matching text and source text to ignore whitespace differences
+      const cleanHText = h.text.replace(/\s+/g, ' ').trim();
+      const cleanSourceText = text.replace(/\s+/g, ' ');
+
+      // We still need position in original 'text', so we use regex on original
+      // Construct regex that matches the words with flexible whitespace
+      const escapedWords = cleanHText.split(' ').map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      const pattern = escapedWords.join('[\\s\\n]+');
+
+      const regex = new RegExp(pattern, 'gi');
       let match;
       while ((match = regex.exec(text)) !== null) {
         matches.push({
