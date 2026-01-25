@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BookOpen, Upload, Youtube, FileText, Trash2, Library, Plus, Leaf, Search, ArrowRight, Loader2, Sparkles, Wand2, FileType, Settings, Download, UploadCloud, X } from 'lucide-react';
+import { BookOpen, Upload, Youtube, FileText, Trash2, Library, Plus, Leaf, Search, ArrowRight, Loader2, Sparkles, Wand2, FileType, Settings, Download, UploadCloud, X, FilePenLine } from 'lucide-react';
 import { parseMarkdownToBook } from '../utils/markdownProcessor';
 import { extractTextFromFile } from '../utils/fileHelpers';
 import { Book } from '../types';
@@ -20,6 +20,11 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded, init
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+
+  // Notes State
+  const [notesModalOpen, setNotesModalOpen] = useState(false);
+  const [currentBookForNotes, setCurrentBookForNotes] = useState<Book | null>(null);
+  const [notesText, setNotesText] = useState('');
 
   // Drag & Drop State
   const [isDragging, setIsDragging] = useState(false);
@@ -167,6 +172,23 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded, init
     } finally {
       setIsLoading(false);
       setStatusMessage('');
+    }
+  };
+
+  const handleOpenNotes = (e: React.MouseEvent, book: Book) => {
+    e.stopPropagation();
+    setCurrentBookForNotes(book);
+    setNotesText(book.notes || '');
+    setNotesModalOpen(true);
+  };
+
+  const handleSaveNotes = async () => {
+    if (currentBookForNotes) {
+      const updatedBook = { ...currentBookForNotes, notes: notesText };
+      await saveBook(updatedBook);
+      await loadLibrary();
+      setNotesModalOpen(false);
+      setCurrentBookForNotes(null);
     }
   };
 
@@ -331,6 +353,44 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded, init
                   {error}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notes Modal */}
+      {notesModalOpen && currentBookForNotes && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-emerald-100">
+            <div className="p-4 border-b border-emerald-50 flex justify-between items-center bg-emerald-50/30">
+              <h3 className="font-serif font-bold text-lg text-emerald-900 flex items-center gap-2 truncate">
+                <FilePenLine size={20} /> Notes: {currentBookForNotes.title}
+              </h3>
+              <button onClick={() => setNotesModalOpen(false)} className="p-1 hover:bg-emerald-100 rounded-full text-emerald-600 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <textarea
+                className="w-full h-48 p-4 bg-emerald-50/30 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-400 outline-none resize-none text-emerald-900 placeholder-emerald-400/70"
+                placeholder="Write your personal notes here..."
+                value={notesText}
+                onChange={(e) => setNotesText(e.target.value)}
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setNotesModalOpen(false)}
+                  className="px-4 py-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveNotes}
+                  className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium shadow-md shadow-emerald-200"
+                >
+                  Save Notes
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -690,6 +750,14 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded, init
                       title="Delete Book"
                     >
                       <Trash2 size={16} />
+                    </button>
+
+                    <button
+                      onClick={(e) => handleOpenNotes(e, book)}
+                      className="absolute top-2 right-10 p-2 bg-white/90 text-emerald-600 rounded-full opacity-0 group-hover:opacity-100 transition-all hover:bg-emerald-50 shadow-sm transform scale-90 group-hover:scale-100"
+                      title="Book Notes"
+                    >
+                      <FilePenLine size={16} />
                     </button>
                   </div>
                 ))}
