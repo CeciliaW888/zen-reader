@@ -37,46 +37,48 @@ export const ReaderTopBar: React.FC<ReaderTopBarProps> = ({
     return (
         <div className={`
       fixed top-0 left-0 right-0 h-14 z-40 backdrop-blur-md border-b
-      flex items-center justify-between px-2 md:px-4 transition-colors duration-300
+      flex items-center justify-between px-1.5 md:px-4 transition-colors duration-300
       ${bgClass}
     `}>
             {/* Left: Navigation */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 md:gap-1 flex-shrink-0">
                 <button
                     onClick={onBack}
-                    className={`p-2 rounded-lg hover:bg-black/5 transition-colors ${iconClass}`}
+                    className={`p-1.5 md:p-2 rounded-lg hover:bg-black/5 transition-colors ${iconClass}`}
                     title="Back to Library"
                 >
-                    <ChevronLeft size={22} />
+                    <ChevronLeft className="w-5 h-5 md:w-[22px] md:h-[22px]" />
                 </button>
                 <button
                     onClick={onToggleTOC}
-                    className={`p-2 rounded-lg hover:bg-black/5 transition-colors ${iconClass}`}
+                    className={`p-1.5 md:p-2 rounded-lg hover:bg-black/5 transition-colors ${iconClass}`}
                     title="Table of Contents"
                 >
-                    <AlignLeft size={22} />
+                    <AlignLeft className="w-5 h-5 md:w-[22px] md:h-[22px]" />
                 </button>
             </div>
 
-            {/* Center: Title (Optional, maybe hidden on mobile if too long) */}
-            <h1 className={`
-        absolute left-1/2 -translate-x-1/2 font-serif font-bold truncate max-w-[40%] text-sm md:text-base cursor-default opacity-80 select-none
-        ${isDark ? 'text-gray-200' : 'text-gray-800'}
-      `}>
-                {bookTitle}
-            </h1>
+            {/* Center: Title (Responsive truncation) */}
+            <div className="flex-1 flex justify-center min-w-0 px-2">
+                <h1 className={`
+                    font-serif font-bold truncate text-sm md:text-base cursor-default opacity-80 select-none
+                    ${isDark ? 'text-gray-200' : 'text-gray-800'}
+                `}>
+                    {bookTitle}
+                </h1>
+            </div>
 
             {/* Right: Tools */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5 md:gap-1 flex-shrink-0">
                 {/* Appearance "Aa" */}
                 <div className="relative">
                     <button
                         ref={aaButtonRef}
                         onClick={() => setShowAppearance(!showAppearance)}
-                        className={`p-2 rounded-lg hover:bg-black/5 transition-colors ${iconClass} ${showAppearance ? 'bg-black/5' : ''}`}
+                        className={`p-1.5 md:p-2 rounded-lg hover:bg-black/5 transition-colors ${iconClass} ${showAppearance ? 'bg-black/5' : ''}`}
                         title="Appearance Settings"
                     >
-                        <Type size={20} />
+                        <Type className="w-4.5 h-4.5 md:w-5 md:h-5" />
                     </button>
 
                     <AppearanceMenu
@@ -91,29 +93,28 @@ export const ReaderTopBar: React.FC<ReaderTopBarProps> = ({
                 {/* Search */}
                 <button
                     onClick={onToggleSearch}
-                    className={`p-2 rounded-lg hover:bg-black/5 transition-colors ${iconClass}`}
+                    className={`p-1.5 md:p-2 rounded-lg hover:bg-black/5 transition-colors ${iconClass}`}
                     title="Search in Book"
                 >
-                    <Search size={20} />
+                    <Search className="w-4.5 h-4.5 md:w-5 md:h-5" />
                 </button>
 
-                {/* Notes */}
+                {/* Notes - Hidden on very small screens, keep for now */}
                 <button
                     onClick={onToggleNotes}
-                    className={`p-2 rounded-lg hover:bg-black/5 transition-colors ${iconClass}`}
+                    className={`p-1.5 md:p-2 rounded-lg hover:bg-black/5 transition-colors ${iconClass} hidden xs:flex`}
                     title="My Notes"
                 >
-                    <FilePenLine size={20} />
+                    <FilePenLine className="w-4.5 h-4.5 md:w-5 md:h-5" />
                 </button>
 
                 {/* AI Companion */}
                 <button
                     onClick={onToggleAI}
-                    className={`p-2 rounded-lg hover:bg-black/5 transition-colors flex items-center gap-1 ${showAI ? 'text-blue-500 bg-blue-50/10' : iconClass}`}
+                    className={`p-1.5 md:p-2 rounded-lg hover:bg-black/5 transition-colors flex items-center gap-1 ${showAI ? 'text-blue-500 bg-blue-50/10' : iconClass}`}
                     title="AI Companion"
                 >
-                    <Sparkles size={18} />
-                    {/* <span className="text-xs font-bold hidden sm:inline">AI</span> */}
+                    <Sparkles className="w-4.5 h-4.5 md:w-[18px] md:h-[18px]" />
                 </button>
             </div>
         </div>
