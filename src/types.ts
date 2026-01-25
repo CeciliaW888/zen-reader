@@ -5,15 +5,25 @@ export interface Chapter {
   order: number;
 }
 
+export interface Highlight {
+  id: string;
+  chapterId: string;
+  text: string;
+  note: string;
+  color: string; // e.g. 'yellow', 'green', 'blue', 'red'
+  created: number;
+}
+
 export interface Book {
-  id: string; // Added for persistence
+  id: string;
   title: string;
   chapters: Chapter[];
-  fileName: string;
+  fileName?: string;
   dateAdded: number; // Added for sorting
   source?: 'upload' | 'youtube' | 'text';
   language?: string;
   notes?: string;
+  highlights?: Highlight[];
 }
 
 export type Theme = 'light' | 'sepia' | 'dark' | 'forest' | 'midnight';

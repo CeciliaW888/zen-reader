@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Chapter, ReaderSettings, Book } from '../types';
+import { ChevronLeft, ChevronRight, FilePenLine, X } from 'lucide-react';
+import { Chapter, ReaderSettings, Book, Highlight } from '../types';
 import { THEME_STYLES, FONT_SIZES } from '../constants';
 import { slugify } from '../utils/markdownProcessor';
 import { ReaderTopBar } from './reader/ReaderTopBar';
 import { AIPanel } from './AIPanel';
 import { BookNotesModal } from './BookNotesModal';
+import { saveBook } from '../services/db'; // Import saveBook
 
 interface ReaderProps {
   book: Book;
@@ -16,6 +17,7 @@ interface ReaderProps {
   onSettingsChange: (settings: ReaderSettings) => void;
   onBack: () => void;
   onToggleTOC: () => void;
+  onBookUpdate?: (book: Book) => void;
 }
 
 export const Reader: React.FC<ReaderProps> = ({
@@ -25,7 +27,8 @@ export const Reader: React.FC<ReaderProps> = ({
   settings,
   onSettingsChange,
   onBack,
-  onToggleTOC
+  onToggleTOC,
+  onBookUpdate
 }) => {
   const topRef = useRef<HTMLDivElement>(null);
   const theme = THEME_STYLES[settings.theme];
@@ -37,6 +40,10 @@ export const Reader: React.FC<ReaderProps> = ({
   const [showAI, setShowAI] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
 
+  // Highlight State
+  const [selectedText, setSelectedText] = useState<{ text: string; top: number; left: number } | null>(null);
+  const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
+
   // Computed properties
   const currentChapter = book.chapters.find(c => c.id === currentChapterId);
   const currentChapterIndex = book.chapters.findIndex(c => c.id === currentChapterId);
@@ -47,7 +54,91 @@ export const Reader: React.FC<ReaderProps> = ({
   useEffect(() => {
     topRef.current?.scrollIntoView({ behavior: 'smooth' });
     setSearchQuery(''); // Reset search on chapter change
+    setSelectedText(null);
   }, [currentChapterId]);
+
+  // Handle Selection
+  useEffect(() => {
+    const handleSelection = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) {
+        setSelectedText(null);
+        return;
+      }
+
+      const text = selection.toString().trim();
+      if (text.length > 0) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+
+        // Simple relative positioning check
+        // We only show if selection is within the reader article
+        if (text.length > 0) {
+          // Adjust for scroll position if needed, but fixed/absolute usually relative to viewport
+          setSelectedText({
+            text,
+            top: rect.top, // clientY
+            left: rect.left + (rect.width / 2) // center
+          });
+        }
+      }
+    };
+
+    document.addEventListener('mouseup', handleSelection);
+    return () => document.removeEventListener('mouseup', handleSelection);
+  }, []);
+
+  // Handle Adding Highlight
+  const handleAddHighlight = async () => {
+    if (!selectedText) return;
+
+    // In a real app we'd identify the exact node path or offset. 
+    // Here we will use simple text matching, which is fragile for duplicates but sufficient for this demo.
+    const newHighlight: Highlight = {
+      id: crypto.randomUUID(),
+      chapterId: currentChapterId,
+      text: selectedText.text,
+      note: '', // Default empty
+      color: 'yellow',
+      created: Date.now()
+    };
+
+    const updatedBook = {
+      ...book,
+      highlights: [...(book.highlights || []), newHighlight]
+    };
+
+    // Callback to parent to persist
+    // We will save to DB.
+    await saveBook(updatedBook);
+
+    // We need to notify parent to update `book` prop. 
+    if (onBookUpdate) onBookUpdate(updatedBook);
+
+    setSelectedText(null);
+    setActiveHighlightId(newHighlight.id); // Open it to edit note immediately?
+
+    // Clear selection
+    window.getSelection()?.removeAllRanges();
+  };
+
+  const handleUpdateHighlight = async (id: string, note: string, color: string) => {
+    const newHighlights = (book.highlights || []).map(h =>
+      h.id === id ? { ...h, note, color } : h
+    );
+    const updatedBook = { ...book, highlights: newHighlights };
+    await saveBook(updatedBook);
+    if (onBookUpdate) onBookUpdate(updatedBook);
+  };
+
+  const handleDeleteHighlight = async (id: string) => {
+    const newHighlights = (book.highlights || []).filter(h => h.id !== id);
+    const updatedBook = { ...book, highlights: newHighlights };
+    await saveBook(updatedBook);
+    if (onBookUpdate) onBookUpdate(updatedBook);
+    setActiveHighlightId(null);
+  };
+
 
   // Handle navigation
   const handleNext = () => {
@@ -58,19 +149,63 @@ export const Reader: React.FC<ReaderProps> = ({
     if (hasPrev) onChapterSelect(book.chapters[currentChapterIndex - 1].id);
   };
 
-  // Helper to highlight text
+  // Helper to highlight text & Highlights
   const HighlightText = ({ text }: { text: string }) => {
-    if (!searchQuery.trim()) return <>{text}</>;
-    const parts = text.split(new RegExp(`(${searchQuery})`, 'gi'));
-    return (
-      <>
-        {parts.map((part, i) =>
-          part.toLowerCase() === searchQuery.toLowerCase() ?
-            <mark key={i} className="bg-yellow-200 text-slate-900 rounded-sm px-0.5">{part}</mark> :
-            part
-        )}
-      </>
-    );
+    let content: React.ReactNode = text;
+
+    // 1. Hightlight Search Terms
+    if (searchQuery.trim()) {
+      const parts = text.split(new RegExp(`(${searchQuery})`, 'gi'));
+      content = (
+        <>
+          {parts.map((part, i) =>
+            part.toLowerCase() === searchQuery.toLowerCase() ?
+              <mark key={i} className="bg-orange-300 text-slate-900 rounded-sm px-0.5">{part}</mark> :
+              part
+          )}
+        </>
+      );
+    }
+
+    // 2. Render Saved Highlights (Fragile text match)
+    // Note: If search highlighted it, this might conflict. React doesn't like nested hydrations easily.
+    // We prioritize Saved Highlights over Search if collision? Or check both?
+    // For simplicity, we just check saved highlights on the raw text if no search active?
+    // Or we try to wrap saved highlights. 
+
+    const chapterHighlights = (book.highlights || []).filter(h => h.chapterId === currentChapterId);
+
+    if (chapterHighlights.length > 0) {
+      // Very simple exact match replacement
+      chapterHighlights.forEach((h, index) => {
+        if (text.includes(h.text)) {
+          const parts = text.split(h.text);
+          // Re-assemble with highlight
+          // This is simplistic and fails if multiple same texts or overlapping.
+          // For prototype: only highlight first occurrence in this block
+          if (parts.length > 1) {
+            content = (
+              <>
+                {parts[0]}
+                <span
+                  className={`bg-yellow-200 cursor-pointer border-b-2 border-yellow-400`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveHighlightId(h.id);
+                  }}
+                >
+                  {h.text}
+                  <sup className="text-[10px] font-bold text-yellow-800 ml-0.5 select-none hover:text-red-500">[{index + 1}]</sup>
+                </span>
+                {parts.slice(1).join(h.text)}
+              </>
+            );
+          }
+        }
+      });
+    }
+
+    return <>{content}</>;
   };
 
   // Custom components to inject IDs for scrolling and highlight text
@@ -155,10 +290,56 @@ export const Reader: React.FC<ReaderProps> = ({
         </div>
       )}
 
+      {/* Selection Tooltip */}
+      {selectedText && (
+        <div
+          className="fixed z-50 bg-slate-800 text-white rounded-lg shadow-xl flex items-center gap-1 p-1 animate-in fade-in zoom-in-95 duration-150"
+          style={{
+            top: Math.max(10, selectedText.top - 50) + 'px',
+            left: Math.max(10, selectedText.left - 50) + 'px' // Simple centering
+          }}
+        >
+          <button
+            onClick={handleAddHighlight}
+            className="px-3 py-1.5 hover:bg-slate-700 rounded-md text-xs font-bold flex items-center gap-2"
+          >
+            <span className="w-3 h-3 rounded-full bg-yellow-400 border border-yellow-200"></span>
+            Highlight
+          </button>
+          <div className="w-px h-4 bg-slate-600 mx-1"></div>
+          <button
+            onClick={() => setSelectedText(null)}
+            className="px-2 py-1.5 hover:bg-slate-700 rounded-md text-xs text-slate-400"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       <div className={`flex-1 overflow-y-auto relative scroll-smooth ${theme.bg} ${showSearch ? '' : 'mt-14'}`}>
         <div ref={topRef} />
 
         <div className={`max-w-2xl mx-auto px-6 py-12 md:py-20 min-h-screen transition-colors duration-300`}>
+          {/* General Notes Display */}
+          {book.notes && (
+            <div className="mb-8 p-6 bg-yellow-50 border border-yellow-200 rounded-xl relative group">
+              <div className="flex items-center gap-2 mb-2 text-yellow-800 font-serif font-bold">
+                <FilePenLine size={18} />
+                <span>Book Notes</span>
+              </div>
+              <div className="text-yellow-900/80 whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                {book.notes}
+              </div>
+              <button
+                onClick={() => setShowNotes(true)}
+                className="absolute top-4 right-4 p-2 bg-yellow-100 text-yellow-700 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-yellow-200"
+                title="Edit Notes"
+              >
+                <FilePenLine size={16} />
+              </button>
+            </div>
+          )}
+
           <article className={`
             prose ${theme.prose} 
             ${fontSizeClass} 
