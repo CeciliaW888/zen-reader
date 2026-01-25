@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Sparkles, Send, Loader2, MessageSquare, BookOpen } from 'lucide-react';
+import { X, Sparkles, Send, Loader2, MessageSquare, BookOpen, Download } from 'lucide-react';
 import { THEME_STYLES } from '../constants';
 import { ReaderSettings, Chapter, Book } from '../types';
-import { summarizeChapter, answerQuestion, summarizeBook } from '../services/geminiService';
+import { summarizeBook, answerQuestion } from '../services/geminiService';
 import ReactMarkdown from 'react-markdown';
 
 interface AIPanelProps {
@@ -26,43 +26,33 @@ export const AIPanel: React.FC<AIPanelProps> = ({
   settings,
 }) => {
   const theme = THEME_STYLES[settings.theme];
-  const [activeTab, setActiveTab] = useState<'summary' | 'overview' | 'chat'>('summary');
-  const [summary, setSummary] = useState<string | null>(null);
-  const [bookOverview, setBookOverview] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'summary' | 'chat'>('summary');
+  const [bookSummary, setBookSummary] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  // Reset chapter summary when chapter changes, but keep book overview
+  // Reset chat when chapter changes
   useEffect(() => {
-    setSummary(null);
     setChatMessages([]);
   }, [currentChapter.id]);
 
+  // Reset summary if book changes
   useEffect(() => {
-    setBookOverview(null); // Reset book overview if book changes (handled by parent unmounting usually, but good practice)
+    setBookSummary(null);
   }, [book.id]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, activeTab]);
 
-  const handleSummarize = async () => {
-    if (summary) return;
+  const handleBookSummary = async () => {
+    if (bookSummary) return;
     setIsLoading(true);
-    const text = await summarizeChapter(currentChapter.content, book.language);
-    setSummary(text);
-    setIsLoading(false);
-  };
-
-  const handleBookOverview = async () => {
-    if (bookOverview) return;
-    setIsLoading(true);
-    // Aggregate content (limit to reasonable size)
     const fullContent = book.chapters.map(c => c.content).join('\n\n');
     const text = await summarizeBook(fullContent, book.language);
-    setBookOverview(text);
+    setBookSummary(text);
     setIsLoading(false);
   }
 
@@ -74,10 +64,44 @@ export const AIPanel: React.FC<AIPanelProps> = ({
     setInputValue('');
     setIsLoading(true);
 
-    const response = await answerQuestion(currentChapter.content, newMessage.content, book.language);
+    // Use full book content for context in chat
+    const fullContent = book.chapters.map(c => c.content).join('\n\n');
+    const response = await answerQuestion(fullContent, newMessage.content, book.language);
 
     setChatMessages(prev => [...prev, { role: 'ai', content: response }]);
     setIsLoading(false);
+  };
+
+  const handleExportEpub = async () => {
+    // Simple EPUB export using a blob
+    // For a real implementation, use a library like 'epub-gen' or server-side generation
+    // Here we'll create a simple HTML file that can be opened
+    const content = book.chapters.map(c => `<h1>${c.title}</h1>\n${c.content}`).join('\n\n---\n\n');
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${book.title}</title>
+  <style>
+    body { font-family: Georgia, serif; max-width: 800px; margin: 2rem auto; padding: 1rem; line-height: 1.6; }
+    h1 { border-bottom: 1px solid #ccc; padding-bottom: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>${book.title}</h1>
+  ${book.chapters.map(c => `<section><h2>${c.title}</h2><div>${c.content.replace(/\n/g, '<br>')}</div></section>`).join('\n')}
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${book.title.replace(/[^a-z0-9]/gi, '_')}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -94,36 +118,36 @@ export const AIPanel: React.FC<AIPanelProps> = ({
             <Sparkles size={18} className="text-blue-500" />
             <span>AI Companion</span>
           </div>
-          <button onClick={onClose} className={`p-1 rounded-md ${theme.uiHover} ${theme.text}`}>
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleExportEpub}
+              className={`p-2 rounded-md ${theme.uiHover} ${theme.text}`}
+              title="Export as HTML"
+            >
+              <Download size={18} />
+            </button>
+            <button onClick={onClose} className={`p-1 rounded-md ${theme.uiHover} ${theme.text}`}>
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs - Simplified to just Summary and Chat */}
         <div className="flex p-2 gap-1 border-b border-gray-200/10">
           <button
             onClick={() => setActiveTab('summary')}
             className={`flex-1 py-2 text-xs font-medium rounded-md transition-colors ${activeTab === 'summary'
-                ? 'bg-blue-50 text-blue-600'
-                : `${theme.text} hover:bg-black/5`
+              ? 'bg-blue-50 text-blue-600'
+              : `${theme.text} hover:bg-black/5`
               }`}
           >
-            Chapter
-          </button>
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`flex-1 py-2 text-xs font-medium rounded-md transition-colors ${activeTab === 'overview'
-                ? 'bg-blue-50 text-blue-600'
-                : `${theme.text} hover:bg-black/5`
-              }`}
-          >
-            Book Info
+            Summary
           </button>
           <button
             onClick={() => setActiveTab('chat')}
             className={`flex-1 py-2 text-xs font-medium rounded-md transition-colors ${activeTab === 'chat'
-                ? 'bg-blue-50 text-blue-600'
-                : `${theme.text} hover:bg-black/5`
+              ? 'bg-blue-50 text-blue-600'
+              : `${theme.text} hover:bg-black/5`
               }`}
           >
             Chat
@@ -135,61 +159,29 @@ export const AIPanel: React.FC<AIPanelProps> = ({
           {activeTab === 'summary' && (
             <div className="space-y-4">
               <div className={`text-sm opacity-70 ${theme.text}`}>
-                Get a quick overview of <span className="font-semibold">"{currentChapter.title}"</span>.
+                Generate a summary for <span className="font-semibold">{book.title}</span>.
               </div>
 
-              {!summary && !isLoading && (
+              {!bookSummary && !isLoading && (
                 <button
-                  onClick={handleSummarize}
+                  onClick={handleBookSummary}
                   className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 font-medium"
                 >
-                  <Sparkles size={18} />
+                  <BookOpen size={18} />
                   Generate Summary
                 </button>
               )}
 
-              {isLoading && !summary && (
+              {isLoading && !bookSummary && (
                 <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-3">
                   <Loader2 size={24} className="animate-spin text-blue-500" />
-                  <span className="text-xs">Analyzing chapter...</span>
+                  <span className="text-xs">Reading book...</span>
                 </div>
               )}
 
-              {summary && (
+              {bookSummary && (
                 <div className={`prose prose-sm ${theme.prose} bg-black/5 p-4 rounded-xl`}>
-                  <ReactMarkdown>{summary}</ReactMarkdown>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'overview' && (
-            <div className="space-y-4">
-              <div className={`text-sm opacity-70 ${theme.text}`}>
-                Generate a "Back Cover" style summary for <span className="font-semibold">{book.title}</span>.
-              </div>
-
-              {!bookOverview && !isLoading && (
-                <button
-                  onClick={handleBookOverview}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 font-medium"
-                >
-                  <BookOpen size={18} />
-                  Summarize Book
-                </button>
-              )}
-
-              {isLoading && !bookOverview && (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-3">
-                  <Loader2 size={24} className="animate-spin text-emerald-500" />
-                  <span className="text-xs">Reading whole book...</span>
-                </div>
-              )}
-
-              {bookOverview && (
-                <div className={`prose prose-sm ${theme.prose} bg-black/5 p-4 rounded-xl`}>
-                  <h3 className="text-sm font-bold uppercase tracking-wider opacity-50 mb-2">Synopsis</h3>
-                  <ReactMarkdown>{bookOverview}</ReactMarkdown>
+                  <ReactMarkdown>{bookSummary}</ReactMarkdown>
                 </div>
               )}
             </div>
@@ -200,7 +192,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
               {chatMessages.length === 0 && (
                 <div className="text-center py-10 opacity-50">
                   <MessageSquare size={32} className="mx-auto mb-2" />
-                  <p className={`text-sm ${theme.text}`}>Ask me anything about this chapter!</p>
+                  <p className={`text-sm ${theme.text}`}>Ask me anything about this book!</p>
                 </div>
               )}
 
@@ -240,7 +232,7 @@ export const AIPanel: React.FC<AIPanelProps> = ({
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                placeholder="Ask about this chapter..."
+                placeholder="Ask about this book..."
                 className={`
                   w-full pl-4 pr-12 py-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 transition-all
                   ${settings.theme.includes('dark') || settings.theme === 'midnight' ? 'bg-slate-800 text-white placeholder-slate-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'}
@@ -260,3 +252,4 @@ export const AIPanel: React.FC<AIPanelProps> = ({
     </div>
   );
 };
+
