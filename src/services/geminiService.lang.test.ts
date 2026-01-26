@@ -29,14 +29,14 @@ describe('geminiService language support', () => {
         it('should include language instruction when language is provided', async () => {
             await summarizeChapter("some text", "Chinese");
             expect(mockGenerateContent).toHaveBeenCalledWith(expect.objectContaining({
-                contents: expect.stringContaining("Answer in Chinese.")
+                contents: expect.stringContaining("**LANGUAGE REQUIREMENT**: You MUST write your entire response, including all headings, in **Chinese**.")
             }));
         });
 
         it('should use default instruction when language is not provided', async () => {
             await summarizeChapter("some text");
             expect(mockGenerateContent).toHaveBeenCalledWith(expect.objectContaining({
-                contents: expect.stringContaining("Answer in the same language as the text.")
+                contents: expect.stringContaining("**LANGUAGE REQUIREMENT**: You MUST write your entire response in the **EXACT SAME LANGUAGE**")
             }));
         });
     });
@@ -45,7 +45,7 @@ describe('geminiService language support', () => {
         it('should include language instruction when language is provided', async () => {
             await summarizeBook("some text", "Spanish");
             expect(mockGenerateContent).toHaveBeenCalledWith(expect.objectContaining({
-                contents: expect.stringContaining("Answer in Spanish.")
+                contents: expect.stringContaining("**LANGUAGE REQUIREMENT**: You MUST write your entire response, including all headings, in **Spanish**.")
             }));
         });
     });
@@ -54,7 +54,7 @@ describe('geminiService language support', () => {
         it('should include language instruction when language is provided', async () => {
             await answerQuestion("context", "question", "French");
             expect(mockGenerateContent).toHaveBeenCalledWith(expect.objectContaining({
-                contents: expect.stringContaining("Answer in French.")
+                contents: expect.stringContaining("**LANGUAGE REQUIREMENT**: You MUST write your entire response, including all headings, in **French**.")
             }));
         });
     });

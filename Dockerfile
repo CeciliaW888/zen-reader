@@ -7,27 +7,29 @@ COPY package*.json ./
 RUN npm ci --legacy-peer-deps
 
 COPY . .
+ARG VITE_GEMINI_API_KEY
+RUN echo "VITE_GEMINI_API_KEY=$VITE_GEMINI_API_KEY" > .env
 RUN npm run build
 
-# Stage 2: Serve
-FROM nginx:alpine
+# Step 2: Run with Node (Backend Proxy)
+FROM node:22-alpine
 
-COPY --from=builder /app/dist /usr/share/nginx/html
+WORKDIR /app
 
-# Add a custom nginx.conf to handle SPA routing (redirect 404 to index.html)
-# We can inline a simple config or create a separate file. 
-# For simplicity in this tool usage, we'll write a simple default conf.
-RUN echo 'server { \
-    listen 8080; \
-    server_name localhost; \
-    root /usr/share/nginx/html; \
-    index index.html; \
-    location / { \
-        try_files $uri $uri/ /index.html; \
-    } \
-}' > /etc/nginx/conf.d/default.conf
+# Copy package files for server dependencies
+COPY package*.json ./
+# Install ONLY production dependencies (this includes express/cors which are now in dependencies)
+RUN npm install --omit=dev --legacy-peer-deps
 
-# Cloud Run expects the container to listen on $PORT, typically 8080
+# Copy built frontend
+COPY --from=builder /app/dist ./dist
+
+# Copy server code
+COPY --from=builder /app/server ./server
+
+# Expose port
+ENV PORT=8080
 EXPOSE 8080
 
-CMD ["nginx", "-g", "daemon off;"]
+# Start server
+CMD ["node", "server/index.js"]

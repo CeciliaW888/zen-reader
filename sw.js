@@ -1,10 +1,8 @@
-const CACHE_NAME = 'zenreader-v1';
+const CACHE_NAME = 'zenreader-v4';
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
-  '/manifest.json',
-  'https://cdn.tailwindcss.com?plugins=typography',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap'
+  '/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
@@ -32,39 +30,29 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // 1. Skip caching for Google GenAI API calls (they require fresh data/internet)
-  if (event.request.url.includes('generativelanguage.googleapis.com')) {
+  // 1. Skip caching for API calls (Always Network)
+  if (event.request.url.includes('/api/') || event.request.url.includes('generativelanguage.googleapis.com')) {
     return;
   }
-  
+
   // 2. Only cache GET requests
   if (event.request.method !== 'GET') {
     return;
   }
 
+  // 3. Network First Strategy
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        // Check if we received a valid response
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'error') {
-          return networkResponse;
+        if (networkResponse && networkResponse.status === 200 && event.request.url.startsWith('http')) {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
         }
-
-        // Clone the response because it's a stream and can only be consumed once
-        const responseToCache = networkResponse.clone();
-
-        caches.open(CACHE_NAME).then((cache) => {
-           // We can cache opaque responses (cors) or basic responses
-           // but we must ensure we don't crash on chrome-extension:// schemes etc.
-           if (event.request.url.startsWith('http')) {
-               cache.put(event.request, responseToCache);
-           }
-        });
-
         return networkResponse;
       })
       .catch(() => {
-        // If network fails (offline), return from cache
         return caches.match(event.request);
       })
   );

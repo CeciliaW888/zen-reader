@@ -1,12 +1,11 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import { Book } from "../types";
 
 // User-defined model chains with fallbacks
-// Note: Using user-requested models even if some might be hypothetical/preview
+// No longer importing GoogleGenAI dire
 const PRO_MODELS = [
-  'gemini-2.0-pro-exp-02-05',
   'gemini-1.5-pro',
-  'gemini-2.0-flash-exp'
+  'gemini-2.0-flash',
+  'gemini-2.0-pro-exp-02-05'
 ];
 
 const FLASH_MODELS = [
@@ -15,44 +14,56 @@ const FLASH_MODELS = [
   'gemini-1.5-flash-8b'
 ];
 
-// Fallback for youtube generation which needs smart models
 const YOUTUBE_MODELS = [
-  'gemini-1.5-pro', // Prioritize 1.5 Pro for better tool use/grounding stability
-  'gemini-2.0-flash-exp',
-  'gemini-2.0-pro-exp-02-05',
+  'gemini-2.0-flash',
+  'gemini-1.5-pro',
+  'gemini-1.5-flash',
 ];
 
+// Backend Proxy Client to hide API Key
+
 const getAIClient = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    console.error("VITE_GEMINI_API_KEY is missing from .env");
-    return null;
-  }
-  return new GoogleGenAI({ apiKey });
+  // Client is now just a dummy or not needed, as we fetch from server
+  // const apiKey = import.meta.env.VITE_GEMINI_API_KEY; 
+  return true;
 };
 
-// Helper to try multiple models
+// Helper to try multiple models via Proxy
 async function generateContentWithFallback(
-  ai: GoogleGenAI,
+  ai: any, // Param kept for signature compatibility but unused
   modelSequence: string[],
   config: any
 ): Promise<{ text: string; candidates?: any[] }> {
   let lastError;
   for (const model of modelSequence) {
     try {
-      // console.log(`Trying model: ${model}`); // Optional debugging
-      const response = await ai.models.generateContent({
-        model,
-        ...config
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model,
+          contents: config.contents,
+          config: config.config
+        })
       });
-      return response;
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || response.statusText);
+      }
+
+      const data = await response.json();
+      return data;
+
     } catch (err) {
-      console.warn(`Model ${model} failed:`, err);
+      console.warn(`Model ${model} failed via Proxy:`, err);
       lastError = err;
       // Continue to next model
     }
   }
-  throw lastError || new Error("All models in fallback chain failed.");
+  throw lastError || new Error("All models in fallback chain failed via Proxy.");
 }
 
 // Skill definition moved to generic string to avoid unused var if not used in config directly or use it
@@ -123,9 +134,9 @@ Use dramatic headings.
 // Helper to get language instruction
 const getLanguageInstruction = (language?: string) => {
   if (language && language !== 'original') {
-    return `Answer in ${language}.`;
+    return `**LANGUAGE REQUIREMENT**: You MUST write your entire response, including all headings, in **${language}**. Do NOT use the source text's language.`;
   }
-  return "Answer in the same language as the text.";
+  return "**LANGUAGE REQUIREMENT**: You MUST write your entire response, including all headings, in the **EXACT SAME LANGUAGE** as the source text/video. **STRICTLY PROHIBITED**: Do NOT translate the content into any other language (e.g., if input is English, output MUST be English). Ensure all generated titles and structural elements are in that same original language.";
 };
 
 export const summarizeChapter = async (text: string, language?: string): Promise<string> => {
@@ -204,7 +215,7 @@ export const generateBookFromYouTube = async (url: string, smartFormat: boolean 
       systemInstruction += `\n\n${langInstruction}`;
     }
 
-    const response = await generateContentWithFallback(ai, ['gemini-2.0-flash-exp', 'gemini-1.5-pro', 'gemini-2.0-pro-exp-02-05'], {
+    const response = await generateContentWithFallback(ai, YOUTUBE_MODELS, {
       contents: `I have a YouTube video URL: ${url}. 
         I need you to perform a Google Search to find the transcript, summary, or detailed content of this SPECIFIC video.
         
@@ -323,9 +334,7 @@ export const generateBookFromText = async (text: string, title: string = "Pasted
   }
 
   try {
-    const languageInstruction = targetLanguage === 'original'
-      ? `7. **Language**: Detect the language of the source text and write the book content in that SAME language. Do NOT translate unless explicitly asked.`
-      : `7. **Language**: Translate the content to **${targetLanguage}**. Ensure you preserve the original tone, register, and meaning. Do not output the original text, only the translation.`;
+    const langInstruction = getLanguageInstruction(targetLanguage);
 
     // Use PRO models for better instruction following (e.g., structuring Chinese text with English instructions)
     const response = await generateContentWithFallback(ai, PRO_MODELS, {
@@ -347,7 +356,7 @@ CRITICAL OUTPUT REQUIREMENTS:
 6. **No "Chapter"**: Do NOT use the word "Chapter" in headings.
 7. **No "Introduction"**: Do NOT use an "Introduction" header.
 
-${languageInstruction}
+${langInstruction}
 **Ensure all generated headings, titles, and structural elements are in the target language.**
 
 8. **Example Output**:

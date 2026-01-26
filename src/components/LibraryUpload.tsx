@@ -794,6 +794,10 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded, init
         )}
 
       </main>
+
+      <footer className="py-6 text-center text-emerald-600/60 text-sm font-medium tracking-wide">
+        Bring knowledge to your fingertips
+      </footer>
     </div>
   );
 };

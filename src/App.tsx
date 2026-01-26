@@ -6,7 +6,10 @@ import { Book, ReaderSettings } from './types';
 import { DEFAULT_SETTINGS, THEME_STYLES } from './constants';
 
 
+import { SplashScreen } from './components/SplashScreen';
+
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
   const [book, setBook] = useState<Book | null>(null);
   const [currentChapterId, setCurrentChapterId] = useState<string>('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -51,6 +54,10 @@ export default function App() {
     setSidebarOpen(false);
   };
 
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
+
   if (!book) {
     return <LibraryUpload onBookLoaded={handleBookLoaded} initialTab={initialLibraryTab} />;
   }
@@ -88,6 +95,9 @@ export default function App() {
             />
           </main>
         )}
+      </div>
+      <div className="absolute bottom-2 right-2 text-[10px] opacity-20 pointer-events-none z-50">
+        v0.1.2-api-fix
       </div>
     </div>
   );
