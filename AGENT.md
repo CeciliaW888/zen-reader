@@ -28,6 +28,25 @@ After redeploying with fixes, the browser continued to show an old version of th
 ### Root Cause
 **Service Worker Caching**: The application uses a Service Worker (`sw.js`). The browser's `CacheStorage` was holding onto the old `index.html` and JS bundles. Even with a new deployment, the Service Worker served the stale content.
 
+### AI Functionality Debugging (2026-01-27)
+
+1.  **Symptoms**: AI Panel failing to summarize or answer questions in the deployed application.
+2.  **Root Cause**: Incorrect mapping of Gemini API request parameters in `server/index.js` and improper formatting of the `contents` array.
+3.  **Fix**:
+    *   Refactored `server/index.js` to correctly map the request body to `generativeModel.generateContent`.
+    *   Ensured `contents` is an array of `Content` objects.
+    *   Added a `/health` endpoint to verify connectivity and environment status.
+    *   Updated `src/services/geminiService.ts` to route all AI calls through the backend proxy.
+4.  **Verification**:
+    *   Local verification: `node server/index.js` followed by a POST request to `http://localhost:8080/api/generate` was successful.
+    *   Deployment: Re-deployed to Cloud Run with explicit environment variable setting.
+    *   Testing: Use the `/health` endpoint to verify the service is running and has the API key.
+
+### Quick Commands
+
+*   **Test Health**: `Invoke-RestMethod -Uri https://zenreader-a7pph53ibxq-uw.a.run.app/health`
+*   **Test Proxy**: `Invoke-RestMethod -Uri https://zenreader-a7pph53ibxq-uw.a.run.app/api/generate -Method Post -ContentType "application/json" -Body '{"model": "gemini-2.0-flash", "contents": "Hi", "config": {}}'`
+
 ### Solution
 1.  **Cache Version Bump**: Updated `CACHE_NAME` in `sw.js` (e.g., `zenreader-v3`).
 2.  **Aggressive Unregistration**: Added code to `index.html` to explicitly unregister all existing service workers on load:

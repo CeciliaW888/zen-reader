@@ -1,23 +1,25 @@
 import { Book } from "../types";
 
-// User-defined model chains with fallbacks
-// No longer importing GoogleGenAI dire
+// Model chains with fallbacks (updated January 2026)
+// See: https://ai.google.dev/gemini-api/docs/models
+// Note: gemini-2.0-flash deprecated March 31, 2026 - kept as fallback
+
 const PRO_MODELS = [
-  'gemini-1.5-pro',
-  'gemini-2.0-flash',
-  'gemini-2.0-pro-exp-02-05'
+  'gemini-2.5-pro',        // State-of-the-art reasoning model
+  'gemini-2.5-flash',      // Fast fallback with good capabilities
+  'gemini-2.0-flash',      // Legacy fallback (deprecated March 2026)
 ];
 
 const FLASH_MODELS = [
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-8b'
+  'gemini-2.5-flash',      // Fast, supports text/image/video/audio
+  'gemini-2.5-flash-lite', // Lighter/faster variant
+  'gemini-2.0-flash',      // Legacy fallback (deprecated March 2026)
 ];
 
 const YOUTUBE_MODELS = [
-  'gemini-2.0-flash',
-  'gemini-1.5-pro',
-  'gemini-1.5-flash',
+  'gemini-2.5-flash',      // Supports video processing
+  'gemini-2.5-pro',        // Complex video reasoning fallback
+  'gemini-2.0-flash',      // Legacy fallback (deprecated March 2026)
 ];
 
 // Backend Proxy Client to hide API Key
@@ -131,19 +133,27 @@ Use dramatic headings.
 5. **Bio Included**: Is the "About the Guest" section included?
 `;
 
-// Helper to get language instruction
-const getLanguageInstruction = (language?: string) => {
+// Helper to get language instruction for BOOK GENERATION ONLY
+// For AI interactions (summaries, Q&A), we want natural language matching the user's context
+const getLanguageInstructionForGeneration = (language?: string) => {
   if (language && language !== 'original') {
     return `**LANGUAGE REQUIREMENT**: You MUST write your entire response, including all headings, in **${language}**. Do NOT use the source text's language.`;
   }
   return "**LANGUAGE REQUIREMENT**: You MUST write your entire response, including all headings, in the **EXACT SAME LANGUAGE** as the source text/video. **STRICTLY PROHIBITED**: Do NOT translate the content into any other language (e.g., if input is English, output MUST be English). Ensure all generated titles and structural elements are in that same original language.";
 };
 
+// Helper for AI interactions - respond naturally without forcing translation
+const getLanguageInstructionForInteraction = (_language?: string) => {
+  // For AI interactions, we ignore the book's target language and respond naturally
+  // This prevents unwanted translations when the user asks questions
+  return "Respond in the same language as the user's question or the content being discussed. Do NOT translate unless explicitly asked.";
+};
+
 export const summarizeChapter = async (text: string, language?: string): Promise<string> => {
   const ai = getAIClient();
   if (!ai) return "Error: API Key missing.";
 
-  const langInstruction = getLanguageInstruction(language);
+  const langInstruction = getLanguageInstructionForInteraction(language);
 
   try {
     const response = await generateContentWithFallback(ai, FLASH_MODELS, {
@@ -160,7 +170,7 @@ export const summarizeBook = async (bookContent: string, language?: string): Pro
   const ai = getAIClient();
   if (!ai) return "Error: API Key missing.";
 
-  const langInstruction = getLanguageInstruction(language);
+  const langInstruction = getLanguageInstructionForInteraction(language);
 
   try {
     const response = await generateContentWithFallback(ai, FLASH_MODELS, {
@@ -177,7 +187,7 @@ export const answerQuestion = async (context: string, question: string, language
   const ai = getAIClient();
   if (!ai) return "Error: API Key missing.";
 
-  const langInstruction = getLanguageInstruction(language);
+  const langInstruction = getLanguageInstructionForInteraction(language);
 
   try {
     const response = await generateContentWithFallback(ai, FLASH_MODELS, {
@@ -200,7 +210,7 @@ export const generateBookFromYouTube = async (url: string, smartFormat: boolean 
 
   // Use pro models for complex reasoning like researching and structuring a book
   try {
-    const langInstruction = getLanguageInstruction(targetLanguage);
+    const langInstruction = getLanguageInstructionForGeneration(targetLanguage);
 
     // Config based on Smart Format
     let systemInstruction = smartFormat
@@ -334,7 +344,7 @@ export const generateBookFromText = async (text: string, title: string = "Pasted
   }
 
   try {
-    const langInstruction = getLanguageInstruction(targetLanguage);
+    const langInstruction = getLanguageInstructionForGeneration(targetLanguage);
 
     // Use PRO models for better instruction following (e.g., structuring Chinese text with English instructions)
     const response = await generateContentWithFallback(ai, PRO_MODELS, {

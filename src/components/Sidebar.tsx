@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Book as BookType, ReaderSettings } from '../types';
-import { X, Settings as SettingsIcon, Sparkles, Library, AlignLeft, Download } from 'lucide-react';
+import { X, Settings as SettingsIcon, Sparkles, Library, AlignLeft, Download, Globe } from 'lucide-react';
 import { THEME_STYLES } from '../constants';
 import { extractHeadings } from '../utils/markdownProcessor';
 import { downloadEpub } from '../utils/epubGenerator';
@@ -113,6 +113,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           ))}
         </div>
+
+        {/* Language Info (Read-only) */}
+        {book.language && (
+          <div className="px-4 pb-3 border-b border-gray-200/10 shrink-0">
+            <div className={`text-xs font-medium uppercase tracking-wider opacity-50 ${theme.text} flex items-center gap-2 mb-2`}>
+              <Globe size={12} />
+              Import Language
+            </div>
+            <div className={`px-3 py-2 rounded-lg text-sm ${settings.theme.includes('dark') || settings.theme === 'midnight' ? 'bg-slate-800/50' : 'bg-gray-100'}`}>
+              <span className={theme.text}>{book.language}</span>
+            </div>
+            <p className={`text-xs mt-1 opacity-40 ${theme.text}`}>
+              AI interactions now auto-detect language naturally
+            </p>
+          </div>
+        )}
 
         {/* Export Button */}
         <div className="p-4 border-t border-gray-200/10 shrink-0">

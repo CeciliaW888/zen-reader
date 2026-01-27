@@ -11,9 +11,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-
 // Initialize Gemini Client (Server-Side)
 const apiKey = process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
 
@@ -23,7 +20,22 @@ if (!apiKey) {
 
 const ai = new GoogleGenerativeAI(apiKey);
 
-// Proxy Endpoint
+// Health Check
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        time: new Date().toISOString(),
+        env: {
+            hasApiKey: !!(process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY),
+            nodeEnv: process.env.NODE_ENV,
+            version: '1.0.1'
+        }
+    });
+});
+
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
+
 app.post('/api/generate', async (req, res) => {
     try {
         const { model, contents, config } = req.body;

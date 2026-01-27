@@ -4,15 +4,13 @@ FROM node:20-alpine as builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
 COPY . .
-ARG VITE_GEMINI_API_KEY
-RUN echo "VITE_GEMINI_API_KEY=$VITE_GEMINI_API_KEY" > .env
 RUN npm run build
 
 # Step 2: Run with Node (Backend Proxy)
-FROM node:22-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
