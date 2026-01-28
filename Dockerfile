@@ -30,4 +30,4 @@ ENV PORT=8080
 EXPOSE 8080
 
 # Start server
-CMD ["node", "server/index.js"]
+CMD ["npx", "tsx", "server/index.ts"]

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Sparkles, Send, Loader2, MessageSquare, BookOpen } from 'lucide-react';
-import { THEME_STYLES } from '../constants';
-import { ReaderSettings, Chapter, Book } from '../types';
-import { summarizeBook, answerQuestion } from '../services/geminiService';
+import { X, Sparkles, Send, MessageSquare, BookOpen } from 'lucide-react';
+import { THEME_STYLES } from '../../constants';
+import { ReaderSettings, Chapter, Book } from '../../types';
+import { summarizeBook, answerQuestion } from '../../services/geminiService';
 import ReactMarkdown from 'react-markdown';
+import { AISummarySkeleton } from '../common/Skeleton';
 
 interface AIPanelProps {
   isOpen: boolean;
@@ -132,9 +133,9 @@ export const AIPanel: React.FC<AIPanelProps> = ({
               )}
 
               {isLoading && !bookSummary && (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-3">
-                  <Loader2 size={24} className="animate-spin text-blue-500" />
-                  <span className="text-xs">Reading book...</span>
+                <div className="space-y-3">
+                  <div className="text-xs text-center text-blue-500 font-medium">Reading book...</div>
+                  <AISummarySkeleton />
                 </div>
               )}
 

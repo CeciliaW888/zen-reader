@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "start": "node server/index.js",
+    "dev:server": "tsx watch server/index.ts",
+    "start": "tsx server/index.ts",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
@@ -24,11 +25,15 @@
     "pdfjs-dist": "3.11.174",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "react-markdown": "^10.1.0"
+    "react-markdown": "^10.1.0",
+    "tsx": "^4.21.0",
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.3.0",
     "@testing-library/react": "^14.1.2",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/node": "^22.14.0",
     "@typescript-eslint/eslint-plugin": "^8.53.1",
     "@typescript-eslint/parser": "^8.53.1",

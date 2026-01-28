@@ -1,47 +1,28 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { LibraryUpload } from './components/LibraryUpload';
+import React from 'react';
+import { LibraryUpload } from './components/library/LibraryUpload';
+import { SplashScreen } from './components/library/SplashScreen';
 import { Reader } from './components/Reader';
 import { Sidebar } from './components/Sidebar';
-import { Book, ReaderSettings } from './types';
-import { DEFAULT_SETTINGS, THEME_STYLES } from './constants';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { SplashScreen } from './components/SplashScreen';
+import { Book } from './types';
+import { THEME_STYLES } from './constants';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { useBookStore, useCurrentChapter, useSettings, useUIStore, useSettingsStore } from './store';
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(true);
-  const [book, setBook] = useState<Book | null>(null);
-  const [currentChapterId, setCurrentChapterId] = useState<string>('');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Book state from store
+  const { book, currentChapterId, setBook, setCurrentChapterId } = useBookStore();
+  const currentChapter = useCurrentChapter();
 
-  const [settings, setSettings] = useState<ReaderSettings>(() => {
-    const saved = localStorage.getItem('zenreader-settings');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed to parse settings', e);
-      }
-    }
-    return DEFAULT_SETTINGS;
-  });
+  // Settings from store (with persistence)
+  const settings = useSettings();
+  const setSettings = useSettingsStore((state) => state.setSettings);
 
-  useEffect(() => {
-    localStorage.setItem('zenreader-settings', JSON.stringify(settings));
-  }, [settings]);
-  const [initialLibraryTab, setInitialLibraryTab] = useState<'import' | 'library'>('import');
-
-  const currentChapter = useMemo(() =>
-    book?.chapters.find(c => c.id === currentChapterId),
-    [book, currentChapterId]);
+  // UI state from store
+  const { showSplash, sidebarOpen, initialLibraryTab, setShowSplash, setSidebarOpen, setInitialLibraryTab } = useUIStore();
 
   const handleBookLoaded = (newBook: Book) => {
     setBook(newBook);
-    if (newBook.chapters.length > 0) {
-      setCurrentChapterId(newBook.chapters[0].id);
-    }
   };
-
-
 
   const handleBackToLibrary = () => {
     setInitialLibraryTab('library');
@@ -61,12 +42,7 @@ export default function App() {
 
   return (
     <div className={`h-full flex flex-col ${theme.bg} ${theme.text} transition-colors duration-300`}>
-      {/* Top Mobile Bar */}
-
-
       <div className="flex-1 flex overflow-hidden relative">
-
-
         <Sidebar
           book={book}
           currentChapterId={currentChapterId}
@@ -94,7 +70,7 @@ export default function App() {
         )}
       </div>
       <div className="absolute bottom-2 right-2 text-[10px] opacity-20 pointer-events-none z-50">
-        v0.1.2-api-fix
+        v0.1.3-zustand
       </div>
     </div>
   );

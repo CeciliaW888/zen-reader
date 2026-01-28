@@ -1,4 +1,4 @@
-import { ReaderSettings } from './types';
+import { ReaderSettings } from '../types';
 
 export const DEFAULT_SETTINGS: ReaderSettings = {
   theme: 'light',

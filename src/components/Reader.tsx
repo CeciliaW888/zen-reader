@@ -5,9 +5,9 @@ import { ReaderSettings, Book, Highlight } from '../types';
 import { THEME_STYLES, FONT_SIZES } from '../constants';
 import { slugify } from '../utils/markdownProcessor';
 import { ReaderTopBar } from './reader/ReaderTopBar';
-import { AIPanel } from './AIPanel';
+import { AIPanel } from './ai/AIPanel';
 import { BookNotesModal } from './BookNotesModal';
-import { ErrorBoundary } from './ErrorBoundary';
+import { ErrorBoundary } from './common/ErrorBoundary';
 import { saveBook } from '../services/db';
 
 interface ReaderProps {

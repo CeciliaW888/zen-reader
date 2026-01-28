@@ -1,4 +1,5 @@
 import { Book } from "../types";
+import { getErrorMessage } from "../utils/errorMessages";
 
 // Content length limits (in characters, ~4 chars per token)
 const CONTENT_LIMITS = {
@@ -126,7 +127,9 @@ async function generateContentWithFallback(
       // Continue to next model
     }
   }
-  throw lastError || new Error("All models in fallback chain failed via Proxy.");
+  // Throw with user-friendly message
+  const appError = getErrorMessage(lastError);
+  throw new Error(appError.userMessage);
 }
 
 // Skill definition moved to generic string to avoid unused var if not used in config directly or use it

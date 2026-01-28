@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { BookOpen, Upload, Youtube, FileText, Trash2, Library, Plus, Leaf, Search, ArrowRight, Loader2, Sparkles, Wand2, FileType, Settings, Download, UploadCloud, X, FilePenLine } from 'lucide-react';
-import { parseMarkdownToBook } from '../utils/markdownProcessor';
-import { extractTextFromFile } from '../utils/fileHelpers';
-import { Book } from '../types';
-import { getAllBooks, saveBook, deleteBook, exportLibraryAsJSON, importLibraryFromJSON } from '../services/db.ts';
-import { generateBookFromYouTube, generateBookFromText } from '../services/geminiService';
+import { parseMarkdownToBook } from '../../utils/markdownProcessor';
+import { extractTextFromFile } from '../../utils/fileHelpers';
+import { formatErrorForDisplay } from '../../utils/errorMessages';
+import { Book } from '../../types';
+import { getAllBooks, saveBook, deleteBook, exportLibraryAsJSON, importLibraryFromJSON } from '../../services/db';
+import { generateBookFromYouTube, generateBookFromText } from '../../services/geminiService';
 
 interface LibraryUploadProps {
   onBookLoaded: (book: Book) => void;
@@ -83,8 +84,7 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded, init
       }
     } catch (err: unknown) {
       console.error(err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to process file";
-      setError(errorMessage);
+      setError(formatErrorForDisplay(err));
     } finally {
       setIsLoading(false);
       setStatusMessage('');
@@ -154,8 +154,8 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded, init
       const book = await generateBookFromYouTube(urlInput, smartFormat, targetLanguage);
       await handleBookReady(book);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to import from YouTube";
-      setError(errorMessage);
+      console.error(err);
+      setError(formatErrorForDisplay(err));
     } finally {
       setIsLoading(false);
       setStatusMessage('');
@@ -189,7 +189,7 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded, init
       }
     } catch (err: unknown) {
       console.error(err);
-      setError("Failed to import text");
+      setError(formatErrorForDisplay(err));
     } finally {
       setIsLoading(false);
       setStatusMessage('');
