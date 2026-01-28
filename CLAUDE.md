@@ -41,6 +41,11 @@ npm run test           # Run Vitest tests
 npm run lint           # ESLint check
 ```
 
+**IMPORTANT**: Never commit test or lint result files (e.g., `lint_results.txt`, `test_errors.txt`) to git. These are temporary artifacts and should be:
+- Excluded via `.gitignore` patterns (`lint_*.txt`, `test_*.txt`)
+- Generated on-demand during development or CI/CD
+- Deleted after use or kept only in local build artifacts directories
+
 ## Architecture
 
 ### Two-Process Architecture
@@ -304,6 +309,45 @@ App
     ├── AIPanel (summary & chat tabs)
     └── Main content (ReactMarkdown, highlights, notes)
 ```
+
+## Best Practices
+
+### Code Quality
+- **TypeScript Strict Mode**: Enabled in `tsconfig.json` for type safety
+- **ESLint**: Run `npm run lint` before committing
+- **Testing**: Run `npm run test` to ensure tests pass
+
+### Version Control (Git)
+
+**NEVER commit these files/directories:**
+- ❌ Test/lint result files (`lint_*.txt`, `test_*.txt`, `*_results.txt`, `*_errors.txt`)
+- ❌ Coverage reports (`coverage/`, `*.lcov`)
+- ❌ Build artifacts (`dist/`, `node_modules/`)
+- ❌ Environment files with secrets (`.env`, `.env.production`)
+- ❌ IDE/editor files (`.vscode/`, `.idea/`)
+- ❌ OS files (`.DS_Store`, `Thumbs.db`)
+
+**Why?** Test and lint results are:
+- Temporary artifacts regenerated on every run
+- Pollute git history with noise
+- Can conflict between team members
+- Should be generated in CI/CD pipelines, not stored in version control
+
+**What to do instead:**
+1. Ensure `.gitignore` excludes these patterns
+2. Generate test/lint reports on-demand during development
+3. Use CI/CD to generate and store reports as build artifacts
+4. If needed for documentation, keep in a separate `reports/` directory that's gitignored
+
+### Service Worker Updates
+- Update `CACHE_VERSION` in `sw.js` before each deployment
+- Format: `v{major}.{minor}.{timestamp}` (e.g., `v1.0.20260128`)
+- This ensures users get the latest UI after browser refresh
+
+### Environment Variables
+- Never commit `.env` files with real API keys
+- Use `.env.example` or `.env.template` for documentation
+- In production, inject secrets via Cloud Run environment variables or Secret Manager
 
 ## Testing
 

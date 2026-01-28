@@ -53,6 +53,14 @@ test-results/
 junit.xml
 vitest.config.ts.timestamp*
 
+# Lint and test result files (should not be committed)
+lint_*.txt
+test_*.txt
+lint_results.*
+test_results.*
+lint_errors.*
+test_errors.*
+
 # Claude Code local files
 .claude/
 
