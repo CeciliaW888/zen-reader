@@ -11,24 +11,20 @@ const CONTENT_LIMITS = {
 
 // Model chains with fallbacks (updated January 2026)
 // See: https://ai.google.dev/gemini-api/docs/models
-// Note: gemini-2.0-flash deprecated March 31, 2026 - kept as fallback
 
 const PRO_MODELS = [
   'gemini-2.5-pro',        // State-of-the-art reasoning model
   'gemini-2.5-flash',      // Fast fallback with good capabilities
-  'gemini-2.0-flash',      // Legacy fallback (deprecated March 2026)
 ];
 
 const FLASH_MODELS = [
   'gemini-2.5-flash',      // Fast, supports text/image/video/audio
   'gemini-2.5-flash-lite', // Lighter/faster variant
-  'gemini-2.0-flash',      // Legacy fallback (deprecated March 2026)
 ];
 
 const YOUTUBE_MODELS = [
   'gemini-2.5-flash',      // Supports video processing
   'gemini-2.5-pro',        // Complex video reasoning fallback
-  'gemini-2.0-flash',      // Legacy fallback (deprecated March 2026)
 ];
 
 // Backend Proxy Client to hide API Key

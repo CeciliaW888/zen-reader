@@ -1,4 +1,23 @@
-const CACHE_NAME = 'zenreader-v4';
+/**
+ * ZenReader Service Worker
+ *
+ * Cache Strategy:
+ * - Network First: Always try network, fall back to cache on failure
+ * - API calls: Never cached (always fresh data)
+ * - Static assets: Cached after first successful fetch
+ *
+ * DEPLOYMENT CHECKLIST:
+ * 1. Update CACHE_VERSION below before each deployment
+ * 2. Old caches are automatically deleted on activation
+ * 3. Users will get fresh UI after browser refreshes
+ */
+
+// Cache version - IMPORTANT: Increment this on every deployment to force cache refresh
+// Format: zenreader-v{major}.{minor}.{timestamp}
+// Update timestamp or increment version when deploying to ensure users get latest UI
+const CACHE_VERSION = 'v1.0.20260128'; // Last updated: 2026-01-28
+const CACHE_NAME = `zenreader-${CACHE_VERSION}`;
+
 const URLS_TO_CACHE = [
   '/',
   '/index.html',
