@@ -4,8 +4,7 @@ import { Reader } from './components/Reader';
 import { Sidebar } from './components/Sidebar';
 import { Book, ReaderSettings } from './types';
 import { DEFAULT_SETTINGS, THEME_STYLES } from './constants';
-
-
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { SplashScreen } from './components/SplashScreen';
 
 export default function App() {
@@ -33,10 +32,6 @@ export default function App() {
 
   const currentChapter = useMemo(() =>
     book?.chapters.find(c => c.id === currentChapterId),
-    [book, currentChapterId]);
-
-  const currentChapterIndex = useMemo(() =>
-    book?.chapters.findIndex(c => c.id === currentChapterId) ?? -1,
     [book, currentChapterId]);
 
   const handleBookLoaded = (newBook: Book) => {
@@ -83,16 +78,18 @@ export default function App() {
 
         {currentChapter && (
           <main className="flex-1 relative flex">
-            <Reader
-              book={book}
-              currentChapterId={currentChapterId}
-              onChapterSelect={setCurrentChapterId}
-              settings={settings}
-              onSettingsChange={setSettings}
-              onBack={handleBackToLibrary}
-              onToggleTOC={() => setSidebarOpen(true)}
-              onBookUpdate={setBook}
-            />
+            <ErrorBoundary>
+              <Reader
+                book={book}
+                currentChapterId={currentChapterId}
+                onChapterSelect={setCurrentChapterId}
+                settings={settings}
+                onSettingsChange={setSettings}
+                onBack={handleBackToLibrary}
+                onToggleTOC={() => setSidebarOpen(true)}
+                onBookUpdate={setBook}
+              />
+            </ErrorBoundary>
           </main>
         )}
       </div>

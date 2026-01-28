@@ -1,7 +1,6 @@
 import React, { useRef, useEffect } from 'react';
-import { Type, LayoutTemplate, Palette, Minus, Plus, AlignLeft, AlignJustify } from 'lucide-react';
-import { ReaderSettings, Theme, FontSize } from '../../types';
-import { THEME_STYLES } from '../../constants';
+import { Type, Palette, Minus, Plus } from 'lucide-react';
+import { ReaderSettings, FontSize } from '../../types';
 
 interface AppearanceMenuProps {
     isOpen: boolean;
@@ -40,10 +39,6 @@ export const AppearanceMenu: React.FC<AppearanceMenuProps> = ({
     }, [isOpen, onClose, triggerRef]);
 
     if (!isOpen) return null;
-
-    const currentTheme = THEME_STYLES[settings.theme];
-    // Calculate position relative to trigger (simple implementation)
-    // In a real app we might use a library like floating-ui
 
     return (
         <div

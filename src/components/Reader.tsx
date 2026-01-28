@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ChevronLeft, ChevronRight, FilePenLine, X } from 'lucide-react';
-import { Chapter, ReaderSettings, Book, Highlight } from '../types';
+import { ReaderSettings, Book, Highlight } from '../types';
 import { THEME_STYLES, FONT_SIZES } from '../constants';
 import { slugify } from '../utils/markdownProcessor';
 import { ReaderTopBar } from './reader/ReaderTopBar';
 import { AIPanel } from './AIPanel';
 import { BookNotesModal } from './BookNotesModal';
-import { saveBook } from '../services/db'; // Import saveBook
+import { ErrorBoundary } from './ErrorBoundary';
+import { saveBook } from '../services/db';
 
 interface ReaderProps {
   book: Book;
@@ -42,6 +43,7 @@ export const Reader: React.FC<ReaderProps> = ({
 
   // Highlight State
   const [selectedText, setSelectedText] = useState<{ text: string; top: number; left: number } | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
 
   // Computed properties
@@ -121,6 +123,8 @@ export const Reader: React.FC<ReaderProps> = ({
     window.getSelection()?.removeAllRanges();
   };
 
+  // These handlers are for future highlight editing UI
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleUpdateHighlight = async (id: string, note: string, color: string) => {
     const newHighlights = (book.highlights || []).map(h =>
       h.id === id ? { ...h, note, color } : h
@@ -130,6 +134,7 @@ export const Reader: React.FC<ReaderProps> = ({
     if (onBookUpdate) onBookUpdate(updatedBook);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleDeleteHighlight = async (id: string) => {
     const newHighlights = (book.highlights || []).filter(h => h.id !== id);
     const updatedBook = { ...book, highlights: newHighlights };
@@ -168,11 +173,11 @@ export const Reader: React.FC<ReaderProps> = ({
       start: number;
       end: number;
       type: 'search' | 'note';
-      data?: any;
+      data?: Highlight & { index: number };
       priority: number; // Search = 1 (low), Note = 2 (high)
     }
 
-    let matches: Match[] = [];
+    const matches: Match[] = [];
 
     // 1. Find Search Matches
     if (searchQuery.trim()) {
@@ -198,9 +203,8 @@ export const Reader: React.FC<ReaderProps> = ({
     chapterHighlights.forEach((h, index) => {
       if (!h.text.trim()) return;
 
-      // Normalize both matching text and source text to ignore whitespace differences
+      // Normalize matching text to ignore whitespace differences
       const cleanHText = h.text.replace(/\s+/g, ' ').trim();
-      const cleanSourceText = text.replace(/\s+/g, ' ');
 
       // We still need position in original 'text', so we use regex on original
       // Construct regex that matches the words with flexible whitespace
@@ -273,19 +277,19 @@ export const Reader: React.FC<ReaderProps> = ({
 
   // Custom components to inject IDs for scrolling and highlight text
   const markdownComponents = {
-    h1: ({ children }: any) => {
+    h1: ({ children }: { children?: React.ReactNode }) => {
       const id = typeof children === 'string' ? slugify(children) : undefined;
       return <h1 id={id} className="scroll-mt-24">{typeof children === 'string' ? <HighlightText text={children} /> : children}</h1>;
     },
-    h2: ({ children }: any) => {
+    h2: ({ children }: { children?: React.ReactNode }) => {
       const id = typeof children === 'string' ? slugify(children) : undefined;
       return <h2 id={id} className="scroll-mt-24">{typeof children === 'string' ? <HighlightText text={children} /> : children}</h2>;
     },
-    h3: ({ children }: any) => {
+    h3: ({ children }: { children?: React.ReactNode }) => {
       const id = typeof children === 'string' ? slugify(children) : undefined;
       return <h3 id={id} className="scroll-mt-24">{typeof children === 'string' ? <HighlightText text={children} /> : children}</h3>;
     },
-    p: ({ children }: any) => {
+    p: ({ children }: { children?: React.ReactNode }) => {
       return (
         <p>
           {React.Children.map(children, child => {
@@ -295,7 +299,7 @@ export const Reader: React.FC<ReaderProps> = ({
         </p>
       );
     },
-    li: ({ children }: any) => {
+    li: ({ children }: { children?: React.ReactNode }) => {
       return (
         <li>
           {React.Children.map(children, child => {
@@ -455,22 +459,23 @@ export const Reader: React.FC<ReaderProps> = ({
       </div>
 
       {/* AI Panel Overlay/Side */}
-      <AIPanel
-        isOpen={showAI}
-        onClose={() => setShowAI(false)}
-        currentChapter={currentChapter}
-        book={book}
-        settings={settings}
-      />
+      <ErrorBoundary>
+        <AIPanel
+          isOpen={showAI}
+          onClose={() => setShowAI(false)}
+          currentChapter={currentChapter}
+          book={book}
+          settings={settings}
+        />
+      </ErrorBoundary>
 
       <BookNotesModal
         isOpen={showNotes}
         onClose={() => setShowNotes(false)}
         book={book}
-        onBookUpdate={(updated) => {
-          // Ideally propagate this up to App to update state, but for now it's persisted in DB
-          // We might need a way to refresh 'book' prop if it's held in App state.
-          // But Reader receives book prop.
+        onBookUpdate={async (updated) => {
+          await saveBook(updated);
+          if (onBookUpdate) onBookUpdate(updated);
         }}
       />
     </div>

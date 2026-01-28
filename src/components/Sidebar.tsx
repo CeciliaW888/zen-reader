@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Book as BookType, ReaderSettings } from '../types';
-import { X, Settings as SettingsIcon, Sparkles, Library, AlignLeft, Download, Globe } from 'lucide-react';
+import { X, AlignLeft, Download, Globe } from 'lucide-react';
 import { THEME_STYLES } from '../constants';
 import { extractHeadings } from '../utils/markdownProcessor';
 import { downloadEpub } from '../utils/epubGenerator';

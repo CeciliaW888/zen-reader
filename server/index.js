@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -28,7 +29,7 @@ app.get('/health', (req, res) => {
         env: {
             hasApiKey: !!(process.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY),
             nodeEnv: process.env.NODE_ENV,
-            version: '1.0.1'
+            version: '1.1.0'
         }
     });
 });
@@ -36,7 +37,57 @@ app.get('/health', (req, res) => {
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-app.post('/api/generate', async (req, res) => {
+// Rate limiting - 30 requests per minute per IP
+const apiLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 30, // limit each IP to 30 requests per windowMs
+    message: { error: 'Too many requests, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Allowed models whitelist
+const ALLOWED_MODELS = [
+    'gemini-2.5-pro',
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+];
+
+// Input validation middleware
+const validateGenerateRequest = (req, res, next) => {
+    const { model, contents, config } = req.body;
+
+    // Validate model
+    if (!model || typeof model !== 'string') {
+        return res.status(400).json({ error: 'Missing or invalid "model" parameter' });
+    }
+
+    if (!ALLOWED_MODELS.includes(model)) {
+        return res.status(400).json({
+            error: `Invalid model "${model}". Allowed: ${ALLOWED_MODELS.join(', ')}`
+        });
+    }
+
+    // Validate contents
+    if (!contents) {
+        return res.status(400).json({ error: 'Missing "contents" parameter' });
+    }
+
+    if (typeof contents !== 'string' && !Array.isArray(contents)) {
+        return res.status(400).json({ error: '"contents" must be a string or array' });
+    }
+
+    // Validate config (optional)
+    if (config !== undefined && (typeof config !== 'object' || config === null)) {
+        return res.status(400).json({ error: '"config" must be an object' });
+    }
+
+    next();
+};
+
+app.post('/api/generate', apiLimiter, validateGenerateRequest, async (req, res) => {
     try {
         const { model, contents, config } = req.body;
         console.log(`[Proxy] Request for model: ${model}`);
@@ -62,7 +113,8 @@ app.post('/api/generate', async (req, res) => {
         try {
             text = responseData.text();
         } catch (e) {
-            console.warn("[Proxy] Failed to extract text from response:", e.message);
+            const msg = e instanceof Error ? e.message : 'Unknown error';
+            console.warn("[Proxy] Failed to extract text from response:", msg);
         }
 
         console.log(`[Proxy] Success: Received response from ${model}`);
@@ -71,11 +123,13 @@ app.post('/api/generate', async (req, res) => {
             text: text
         });
     } catch (error) {
-        console.error("[Proxy] Gemini API Error:", error.message);
-        if (error.stack) console.error(error.stack);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorStack = error instanceof Error ? error.stack : undefined;
+        console.error("[Proxy] Gemini API Error:", errorMessage);
+        if (errorStack) console.error(errorStack);
         res.status(500).json({
-            error: error.message || "Internal Server Error",
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            error: errorMessage || "Internal Server Error",
+            stack: process.env.NODE_ENV === 'development' ? errorStack : undefined
         });
     }
 });

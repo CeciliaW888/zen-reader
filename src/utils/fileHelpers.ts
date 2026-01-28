@@ -2,7 +2,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
 
 // Handle potential ESM/CJS interop issues with pdfjs-dist
-// @ts-expect-error
+// @ts-expect-error - pdfjs-dist has inconsistent module exports between environments
 const pdfjs = pdfjsLib.default || pdfjsLib;
 
 // Ensure worker is set up safely
@@ -71,7 +71,7 @@ const extractTextFromPDF = async (file: File): Promise<string> => {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
     const pageText = textContent.items
-      .map((item: any) => item.str)
+      .map((item: { str?: string }) => item.str || '')
       .join(' ');
     fullText += pageText + '\n\n';
   }

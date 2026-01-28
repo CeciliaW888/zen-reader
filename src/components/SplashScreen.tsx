@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, Leaf } from 'lucide-react';
 
 interface SplashScreenProps {
     onFinish: () => void;

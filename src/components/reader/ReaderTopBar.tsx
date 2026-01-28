@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { ChevronLeft, AlignLeft, Search, Type, Sparkles, FilePenLine } from 'lucide-react';
 import { AppearanceMenu } from './AppearanceMenu';
-import { ReaderSettings, Book } from '../../types';
+import { ReaderSettings } from '../../types';
 
 interface ReaderTopBarProps {
     bookTitle: string;
