@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ChevronLeft, ChevronRight, FilePenLine, X } from 'lucide-react';
 import { ReaderSettings, Book, Highlight } from '../types';
@@ -9,6 +9,7 @@ import { AIPanel } from './ai/AIPanel';
 import { BookNotesModal } from './BookNotesModal';
 import { ErrorBoundary } from './common/ErrorBoundary';
 import { saveBook } from '../services/db';
+import { useSwipe, useKeyboardNavigation } from '../hooks/useSwipe';
 
 interface ReaderProps {
   book: Book;
@@ -32,6 +33,7 @@ export const Reader: React.FC<ReaderProps> = ({
   onBookUpdate
 }) => {
   const topRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const theme = THEME_STYLES[settings.theme];
   // Cast number to key of FONT_SIZES if necessary, though indexing works
   const fontSizeClass = FONT_SIZES[settings.fontSize];
@@ -145,13 +147,32 @@ export const Reader: React.FC<ReaderProps> = ({
 
 
   // Handle navigation
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (hasNext) onChapterSelect(book.chapters[currentChapterIndex + 1].id);
-  };
+  }, [hasNext, book.chapters, currentChapterIndex, onChapterSelect]);
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     if (hasPrev) onChapterSelect(book.chapters[currentChapterIndex - 1].id);
-  };
+  }, [hasPrev, book.chapters, currentChapterIndex, onChapterSelect]);
+
+  // Swipe gestures for mobile page flipping
+  // Left swipe = next chapter, Right swipe = previous chapter
+  const swipeCallbacks = useMemo(() => ({
+    onSwipeLeft: handleNext,
+    onSwipeRight: handlePrev
+  }), [handleNext, handlePrev]);
+
+  useSwipe(contentRef, swipeCallbacks, {
+    threshold: 50,           // Low threshold for easy flipping
+    velocityThreshold: 0.3,  // Fast swipes can be even shorter
+    enabled: !showAI         // Disable when AI panel is open
+  });
+
+  // Keyboard navigation (arrow keys)
+  useKeyboardNavigation(
+    { onPrev: handlePrev, onNext: handleNext },
+    !showAI && !showSearch   // Disable when AI panel or search is active
+  );
 
   // Helper to highlight text & Highlights
   const HighlightText = ({ text }: { text: string }) => {
@@ -383,7 +404,10 @@ export const Reader: React.FC<ReaderProps> = ({
         </div>
       )}
 
-      <div className={`flex-1 overflow-y-auto relative scroll-smooth ${theme.bg} ${showSearch ? '' : 'mt-14'}`}>
+      <div
+        ref={contentRef}
+        className={`flex-1 overflow-y-auto relative scroll-smooth ${theme.bg} ${showSearch ? '' : 'mt-14'}`}
+      >
         <div ref={topRef} />
 
         <div className={`max-w-2xl mx-auto px-6 py-12 md:py-20 min-h-screen transition-colors duration-300`}>
