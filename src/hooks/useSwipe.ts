@@ -1,12 +1,10 @@
 import { useEffect, useRef, useCallback } from 'react';
 
 interface SwipeConfig {
-  /** Minimum distance in pixels to trigger a swipe (default: 50) */
+  /** Minimum distance in pixels to trigger a swipe (default: 40) */
   threshold?: number;
-  /** Minimum velocity in px/ms to trigger a swipe with shorter distance (default: 0.3) */
-  velocityThreshold?: number;
-  /** Maximum vertical movement ratio to horizontal to still count as horizontal swipe (default: 0.75) */
-  verticalTolerance?: number;
+  /** Edge zone width as percentage of screen (default: 0.15 = 15%) */
+  edgeZone?: number;
   /** Whether swipe is enabled (default: true) */
   enabled?: boolean;
 }
@@ -20,28 +18,27 @@ interface TouchState {
   startX: number;
   startY: number;
   startTime: number;
+  startedFromLeftEdge: boolean;
+  startedFromRightEdge: boolean;
   tracking: boolean;
 }
 
 /**
  * Hook for detecting horizontal swipe gestures on mobile devices.
- * Designed for smooth, low-effort page flipping.
+ * Uses edge detection for reliable page flipping on scrollable content.
  *
- * Features:
- * - Low threshold for easy triggering
- * - Velocity-based detection (fast swipes can be shorter)
- * - Ignores vertical scrolling
- * - Doesn't interfere with text selection
+ * Two ways to trigger:
+ * 1. Edge swipe: Start from left/right 15% of screen, swipe inward
+ * 2. Full swipe: Horizontal swipe anywhere with enough distance
  */
 export function useSwipe(
-  elementRef: React.RefObject<HTMLElement>,
+  _elementRef: React.RefObject<HTMLElement>, // Kept for API compatibility
   callbacks: SwipeCallbacks,
   config: SwipeConfig = {}
 ) {
   const {
-    threshold = 50,
-    velocityThreshold = 0.3,
-    verticalTolerance = 0.75,
+    threshold = 40,
+    edgeZone = 0.15,
     enabled = true
   } = config;
 
@@ -49,6 +46,8 @@ export function useSwipe(
     startX: 0,
     startY: 0,
     startTime: 0,
+    startedFromLeftEdge: false,
+    startedFromRightEdge: false,
     tracking: false
   });
 
@@ -56,26 +55,19 @@ export function useSwipe(
     if (!enabled) return;
 
     const touch = e.touches[0];
+    const screenWidth = window.innerWidth;
+    const leftEdgeThreshold = screenWidth * edgeZone;
+    const rightEdgeThreshold = screenWidth * (1 - edgeZone);
+
     touchState.current = {
       startX: touch.clientX,
       startY: touch.clientY,
       startTime: Date.now(),
+      startedFromLeftEdge: touch.clientX < leftEdgeThreshold,
+      startedFromRightEdge: touch.clientX > rightEdgeThreshold,
       tracking: true
     };
-  }, [enabled]);
-
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!touchState.current.tracking) return;
-
-    const touch = e.touches[0];
-    const deltaX = touch.clientX - touchState.current.startX;
-    const deltaY = touch.clientY - touchState.current.startY;
-
-    // If vertical movement is dominant, stop tracking (user is scrolling)
-    if (Math.abs(deltaY) > Math.abs(deltaX) * (1 / verticalTolerance)) {
-      touchState.current.tracking = false;
-    }
-  }, [verticalTolerance]);
+  }, [enabled, edgeZone]);
 
   const handleTouchEnd = useCallback((e: TouchEvent) => {
     if (!touchState.current.tracking) return;
@@ -85,53 +77,61 @@ export function useSwipe(
     const deltaY = touch.clientY - touchState.current.startY;
     const deltaTime = Date.now() - touchState.current.startTime;
 
+    const { startedFromLeftEdge, startedFromRightEdge } = touchState.current;
+
     // Reset tracking
     touchState.current.tracking = false;
 
-    // Check if this is a horizontal swipe
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
 
-    // Ignore if vertical movement is too large
-    if (absY > absX * verticalTolerance) {
+    // Ignore if vertical movement is much larger than horizontal (user is scrolling)
+    // Be generous: allow up to 2x vertical movement
+    if (absY > absX * 2) {
       return;
     }
 
-    // Calculate velocity (px/ms)
+    // Ignore very slow swipes (likely accidental or scrolling)
     const velocity = absX / deltaTime;
-
-    // Determine if swipe threshold is met
-    // Either: distance > threshold OR (distance > threshold/2 AND velocity > velocityThreshold)
-    const meetsThreshold = absX > threshold || (absX > threshold / 2 && velocity > velocityThreshold);
-
-    if (!meetsThreshold) {
+    if (velocity < 0.1 && absX < threshold * 2) {
       return;
     }
 
-    // Trigger appropriate callback
-    if (deltaX > 0 && callbacks.onSwipeRight) {
-      callbacks.onSwipeRight();
-    } else if (deltaX < 0 && callbacks.onSwipeLeft) {
-      callbacks.onSwipeLeft();
+    // Method 1: Edge swipe (lower threshold, must swipe inward)
+    if (startedFromLeftEdge && deltaX > threshold * 0.6) {
+      // Started from left edge, swiped right = previous
+      callbacks.onSwipeRight?.();
+      return;
     }
-  }, [threshold, velocityThreshold, verticalTolerance, callbacks]);
+
+    if (startedFromRightEdge && deltaX < -threshold * 0.6) {
+      // Started from right edge, swiped left = next
+      callbacks.onSwipeLeft?.();
+      return;
+    }
+
+    // Method 2: Full horizontal swipe anywhere (higher threshold)
+    if (absX > threshold && absX > absY) {
+      if (deltaX > 0) {
+        callbacks.onSwipeRight?.();
+      } else {
+        callbacks.onSwipeLeft?.();
+      }
+    }
+  }, [threshold, callbacks]);
 
   useEffect(() => {
-    const element = elementRef.current;
-    if (!element || !enabled) return;
+    if (!enabled) return;
 
-    // Use passive: false to allow preventDefault if needed in future
-    // But currently we don't prevent default to allow normal scrolling
-    element.addEventListener('touchstart', handleTouchStart, { passive: true });
-    element.addEventListener('touchmove', handleTouchMove, { passive: true });
-    element.addEventListener('touchend', handleTouchEnd, { passive: true });
+    // Listen on window for more reliable touch detection
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
 
     return () => {
-      element.removeEventListener('touchstart', handleTouchStart);
-      element.removeEventListener('touchmove', handleTouchMove);
-      element.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [elementRef, enabled, handleTouchStart, handleTouchMove, handleTouchEnd]);
+  }, [enabled, handleTouchStart, handleTouchEnd]);
 }
 
 /**

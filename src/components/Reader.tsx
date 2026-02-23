@@ -163,8 +163,8 @@ export const Reader: React.FC<ReaderProps> = ({
   }), [handleNext, handlePrev]);
 
   useSwipe(contentRef, swipeCallbacks, {
-    threshold: 50,           // Low threshold for easy flipping
-    velocityThreshold: 0.3,  // Fast swipes can be even shorter
+    threshold: 40,           // Low threshold for easy flipping
+    edgeZone: 0.15,          // 15% edge zones for edge swipes
     enabled: !showAI         // Disable when AI panel is open
   });
 
