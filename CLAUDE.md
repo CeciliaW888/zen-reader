@@ -204,10 +204,36 @@ User → LibraryUpload → extractTextFromFile → parseMarkdownToBook → saveB
 
 ### YouTube Import
 ```
-User → URL Input → generateBookFromYouTube → Gemini (with googleSearch tool)
+User → URL Input → generateBookFromYouTube → Gemini (file_data: YouTube URL)
                                       ↓
-                        Parse JSON response → saveBook → Reader
+                        Parse TITLE + Markdown → saveBook → Reader
 ```
+
+The YouTube URL is passed directly to Gemini as a `file_data` part (not via `googleSearch`). Gemini processes the actual video (audio + visual) natively.
+
+#### Video Processing Limits (from [Gemini docs](https://ai.google.dev/gemini-api/docs/video-understanding))
+
+| Metric | Value |
+|---|---|
+| Video token cost (default resolution) | ~300 tokens/sec |
+| Video token cost (low resolution) | ~100 tokens/sec |
+| Audio token cost | 32 tokens/sec |
+| Combined (default res) | ~332 tokens/sec |
+| Model context window | 1,048,576 tokens |
+| Max video length (default res) | ~1 hour |
+| Max video length (low res) | ~3 hours |
+| Free tier YouTube limit | 8 hours/day |
+| Max videos per request (Gemini 2.5+) | 10 |
+
+**Practical impact on processing time:**
+
+| Video Length | Approx. Tokens (default res) | User Experience |
+|---|---|---|
+| Under 10 min | ~200K | Fast, best results |
+| 10–15 min | 200–300K | Good, recommended max |
+| 15–30 min | 300–600K | Slower processing |
+| 30–60 min | 600K–1.2M | Very slow, near context limit |
+| Over 60 min | Exceeds 1M | May fail or produce incomplete results |
 
 ### Reader AI Features
 ```

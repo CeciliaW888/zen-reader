@@ -59,6 +59,19 @@ An AI-powered progressive web app (PWA) that transforms content (YouTube videos,
 - **Testing**: Vitest + React Testing Library
 - **Storage**: IndexedDB (books), localStorage (settings)
 
+## YouTube Video Limits
+
+YouTube videos are processed directly by Gemini AI (video + audio). Processing time and quality depend on video length:
+
+| Video Length | Experience |
+|---|---|
+| **Under 15 min** | Fast, best results (recommended) |
+| **15–30 min** | Slower, still good |
+| **30–60 min** | Significantly slower, may be less detailed |
+| **Over 60 min** | May fail — exceeds AI context window |
+
+These limits come from Gemini's video token costs (~332 tokens/sec for video + audio) against the 1M token context window. See [Google's video docs](https://ai.google.dev/gemini-api/docs/video-understanding) for details.
+
 ## Deployment
 
 Docker single-container deployment to Google Cloud Run:
