@@ -599,7 +599,8 @@ export const LibraryUpload: React.FC<LibraryUploadProps> = ({ onBookLoaded, init
                         </div>
                         <div className="text-sm text-rose-900">
                           <p className="font-bold mb-1">AI Video to Book</p>
-                          <p className="opacity-80 leading-relaxed">Paste a YouTube URL. Our AI will research the content, extract the transcript, and write a structured book chapter-by-chapter.</p>
+                          <p className="opacity-80 leading-relaxed">Paste a YouTube URL. Our AI watches the video directly and transforms it into a structured book.</p>
+                          <p className="opacity-60 leading-relaxed mt-1">Best with videos under 15 minutes. Longer videos (30min+) will be significantly slower and may produce less detailed results.</p>
                         </div>
                       </div>
                       <div className="relative">
