@@ -70,8 +70,18 @@ const chunkText = (text: string, maxChunkSize: number): string[] => {
 };
 
 // Types for the generate API
+interface ContentPart {
+  text?: string;
+  fileData?: { fileUri: string; mimeType: string };
+}
+
+interface ContentMessage {
+  role: string;
+  parts: ContentPart[];
+}
+
 interface GenerateConfig {
-  contents: string;
+  contents: string | ContentMessage[];
   config?: {
     systemInstruction?: string;
     tools?: Array<{ googleSearch?: Record<string, unknown> }>;
@@ -315,36 +325,33 @@ export const generateBookFromYouTube = async (url: string, smartFormat: boolean 
       systemInstruction += `\n\n${langInstruction}`;
     }
 
-    const response = await generateContentWithFallback(ai, YOUTUBE_MODELS, {
-      contents: `I have a YouTube video URL: ${url}. 
-        I need you to perform a Google Search to find the transcript, summary, or detailed content of this SPECIFIC video.
-        
-        STEP 1: Search for the video URL to identify the exact Title and Channel.
-        STEP 2: Search for the transcript or a detailed summary of THIS specific video.
-        STEP 3: If you cannot find the exact transcript, perform a broad search on the main topic of the video (using the Title found in Step 1) to synthesize a comprehensive, high-quality book chapter about that subject. 
-        **Drafting Strategy if Transcript Missing:**
-        - Identify the core topic from the Title.
-        - Research this topic using Google Search tools.
-        - Write a chapter that explains this topic in depth, similar to how the video likely covered it.
-        - **Disclaimer:** If you are synthesizing based on topic research rather than a direct transcript, add a small disclaimer in the "Source" blockquote (e.g., "Source: Subject Research based on [Video Title]").
+    // Normalize YouTube URL to standard format for file_data
+    const normalizedUrl = url.replace(/youtu\.be\/([^?]+)/, 'www.youtube.com/watch?v=$1').replace(/^(?!https?:\/\/)/, 'https://');
 
-        STEP 4: ${smartFormat
-          ? 'Transform the gathered information into a structured narrative article by strictly following the "Podcast Episode → Narrative Article" skill provided below.'
-          : 'Simply output the gathered content as is.'}
-        
-        CRITICAL OUTPUT REQUIREMENTS:
-        1.  **Format**: Start with the title on the very first line prefixed with "TITLE: ".
-        2.  **Content**: Follow the title immediately with the book content in Markdown.
-        
-        Example Output:
-        TITLE: The Future of AI
-        > **Source:** ...
-        
-        ## The Beginning
-        [Content here...]
-        `,
+    const response = await generateContentWithFallback(ai, YOUTUBE_MODELS, {
+      contents: [
+        { role: 'user', parts: [
+          { fileData: { fileUri: normalizedUrl, mimeType: 'video/mp4' } },
+          { text: `Watch this YouTube video carefully and extract its full content.
+
+${smartFormat
+  ? 'Transform the content into a structured narrative article by strictly following the "Podcast Episode → Narrative Article" skill provided in the system instructions.'
+  : 'Output the content as a clean transcript/summary.'}
+
+CRITICAL OUTPUT REQUIREMENTS:
+1. **Format**: Start with the title on the very first line prefixed with "TITLE: ".
+2. **Content**: Follow the title immediately with the book content in Markdown.
+
+Example Output:
+TITLE: The Future of AI
+> **Source:** Channel Name
+
+## The Beginning
+[Content here...]
+` }
+        ]}
+      ],
       config: {
-        tools: [{ googleSearch: {} }],
         systemInstruction: systemInstruction,
       }
     });
