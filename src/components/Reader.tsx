@@ -54,6 +54,12 @@ export const Reader: React.FC<ReaderProps> = ({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [activeHighlightId, setActiveHighlightId] = useState<string | null>(null);
 
+  // Refs to avoid stale closures in debounced save effect
+  const bookRef = useRef(book);
+  bookRef.current = book;
+  const onBookUpdateRef = useRef(onBookUpdate);
+  onBookUpdateRef.current = onBookUpdate;
+
   // Computed properties
   const currentChapter = book.chapters.find(c => c.id === currentChapterId);
   const currentChapterIndex = book.chapters.findIndex(c => c.id === currentChapterId);
@@ -75,22 +81,19 @@ export const Reader: React.FC<ReaderProps> = ({
   // Save reading progress whenever page or chapter changes
   useEffect(() => {
     const saveProgress = async () => {
+      const latestBook = bookRef.current;
       const updatedBook = {
-        ...book,
+        ...latestBook,
         lastReadChapterId: currentChapterId,
         lastReadPage: currentPage,
         lastReadTime: Date.now(),
       };
       await saveBook(updatedBook);
-      if (onBookUpdate) {
-        onBookUpdate(updatedBook);
-      }
+      onBookUpdateRef.current?.(updatedBook);
     };
 
-    // Debounce to avoid saving too frequently (wait for user to settle on a page)
     const timeoutId = setTimeout(saveProgress, 1000);
     return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChapterId, currentPage]);
 
   // Step 1: Measure the outer container in exact pixels
@@ -304,33 +307,29 @@ export const Reader: React.FC<ReaderProps> = ({
       {/* Search Bar */}
       {showSearch && (
         <div className={`
-          ${theme.bg === 'bg-slate-900' || theme.bg === 'bg-black' 
-            ? 'bg-slate-800 border-slate-700' 
-            : 'bg-white border-gray-200'}
+          ${theme.isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}
           border-b px-4 py-3 flex items-center gap-2 z-30 shadow-sm fixed top-14 left-0 right-0
         `}>
           <div className="flex-1 relative">
-            <input 
-              id="search-input" 
-              type="text" 
+            <input
+              id="search-input"
+              type="text"
               placeholder="Search in this chapter..."
               className={`
                 w-full pl-4 pr-10 py-2 rounded-lg outline-none transition-all text-sm
-                ${theme.bg === 'bg-slate-900' || theme.bg === 'bg-black'
+                ${theme.isDark
                   ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400 focus:bg-slate-600 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/50'
                   : 'bg-gray-100 border-transparent text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200'}
               `}
-              value={searchQuery} 
-              onChange={(e) => setSearchQuery(e.target.value)} 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
             {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')} 
+              <button
+                onClick={() => setSearchQuery('')}
                 className={`
                   absolute right-3 top-1/2 -translate-y-1/2
-                  ${theme.bg === 'bg-slate-900' || theme.bg === 'bg-black'
-                    ? 'text-slate-400 hover:text-slate-200'
-                    : 'text-gray-400 hover:text-gray-600'}
+                  ${theme.isDark ? 'text-slate-400 hover:text-slate-200' : 'text-gray-400 hover:text-gray-600'}
                 `}
               >
                 <X size={16} />
@@ -339,9 +338,7 @@ export const Reader: React.FC<ReaderProps> = ({
           </div>
           <div className={`
             text-xs font-medium whitespace-nowrap
-            ${theme.bg === 'bg-slate-900' || theme.bg === 'bg-black'
-              ? 'text-slate-400'
-              : 'text-gray-500'}
+            ${theme.isDark ? 'text-slate-400' : 'text-gray-500'}
           `}>
             {searchQuery ? 'Matches highlighted' : 'Type to search'}
           </div>

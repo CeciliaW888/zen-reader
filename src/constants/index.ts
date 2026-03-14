@@ -14,6 +14,7 @@ export const THEME_STYLES = {
     ui: 'bg-slate-50 border-slate-200 text-slate-700',
     uiHover: 'hover:bg-slate-100',
     accent: 'text-blue-600',
+    isDark: false,
   },
   sepia: {
     bg: 'bg-[#fbf0d9]',
@@ -22,6 +23,7 @@ export const THEME_STYLES = {
     ui: 'bg-[#f4e4bc] border-[#e6d0a0] text-[#4a3b22]',
     uiHover: 'hover:bg-[#ebdcb4]',
     accent: 'text-amber-700',
+    isDark: false,
   },
   dark: {
     bg: 'bg-slate-900',
@@ -30,6 +32,7 @@ export const THEME_STYLES = {
     ui: 'bg-slate-800 border-slate-700 text-slate-300',
     uiHover: 'hover:bg-slate-700',
     accent: 'text-blue-400',
+    isDark: true,
   },
   forest: {
     bg: 'bg-[#eef5ef]', // Very pale green
@@ -38,6 +41,7 @@ export const THEME_STYLES = {
     ui: 'bg-[#daeadd] border-[#c0dcc5] text-[#1e3a29]',
     uiHover: 'hover:bg-[#cde4d1]',
     accent: 'text-emerald-700',
+    isDark: false,
   },
   midnight: {
     bg: 'bg-[#0f172a]', // Slate 900 like
@@ -46,6 +50,7 @@ export const THEME_STYLES = {
     ui: 'bg-[#1e293b] border-[#334155] text-[#94a3b8]',
     uiHover: 'hover:bg-[#334155]',
     accent: 'text-indigo-400',
+    isDark: true,
   }
 };
 
