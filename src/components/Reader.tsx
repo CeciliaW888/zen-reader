@@ -257,6 +257,9 @@ export const Reader: React.FC<ReaderProps> = ({
 
   return (
     <div className={`flex flex-col h-screen ${theme.bg}`}>
+      {/* Spacer for fixed top bar - pushes content down without affecting flex measurement */}
+      <div className={`${showSearch ? 'h-[108px]' : 'h-14'} flex-shrink-0`} />
+      
       <ReaderTopBar
         bookTitle={book.title}
         onBack={onBack}
@@ -356,7 +359,7 @@ export const Reader: React.FC<ReaderProps> = ({
       */}
       <div
         ref={outerRef}
-        className={`flex-1 overflow-hidden relative ${showSearch ? 'pt-[108px]' : 'pt-14'}`}
+        className="flex-1 overflow-hidden relative"
       >
         {dims.w > 0 && dims.h > 0 && (
           <div
