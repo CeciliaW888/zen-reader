@@ -62,10 +62,36 @@ export const Reader: React.FC<ReaderProps> = ({
 
   // Reset page when chapter changes
   useEffect(() => {
-    setCurrentPage(0);
     setSearchQuery('');
     setSelectedText(null);
-  }, [currentChapterId]);
+    // Restore last read page if returning to this chapter
+    if (book.lastReadChapterId === currentChapterId && book.lastReadPage !== undefined) {
+      setCurrentPage(book.lastReadPage);
+    } else {
+      setCurrentPage(0);
+    }
+  }, [currentChapterId, book.lastReadChapterId, book.lastReadPage]);
+
+  // Save reading progress whenever page or chapter changes
+  useEffect(() => {
+    const saveProgress = async () => {
+      const updatedBook = {
+        ...book,
+        lastReadChapterId: currentChapterId,
+        lastReadPage: currentPage,
+        lastReadTime: Date.now(),
+      };
+      await saveBook(updatedBook);
+      if (onBookUpdate) {
+        onBookUpdate(updatedBook);
+      }
+    };
+
+    // Debounce to avoid saving too frequently (wait for user to settle on a page)
+    const timeoutId = setTimeout(saveProgress, 1000);
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentChapterId, currentPage]);
 
   // Step 1: Measure the outer container in exact pixels
   useEffect(() => {

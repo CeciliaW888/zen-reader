@@ -18,7 +18,9 @@ export const useBookStore = create<BookState>((set) => ({
   setBook: (book) => {
     set({ book });
     if (book && book.chapters.length > 0) {
-      set({ currentChapterId: book.chapters[0].id });
+      // Resume from last read position if available
+      const chapterId = book.lastReadChapterId || book.chapters[0].id;
+      set({ currentChapterId: chapterId });
     }
   },
 

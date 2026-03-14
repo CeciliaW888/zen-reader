@@ -24,6 +24,10 @@ export interface Book {
   language?: string;
   notes?: string;
   highlights?: Highlight[];
+  // Reading progress
+  lastReadChapterId?: string;
+  lastReadPage?: number;
+  lastReadTime?: number;
 }
 
 export type Theme = 'light' | 'sepia' | 'dark' | 'forest' | 'midnight';
