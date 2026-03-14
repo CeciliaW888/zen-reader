@@ -356,7 +356,7 @@ export const Reader: React.FC<ReaderProps> = ({
       */}
       <div
         ref={outerRef}
-        className={`flex-1 overflow-hidden relative ${showSearch ? 'mt-[52px]' : ''}`}
+        className={`flex-1 overflow-hidden relative ${showSearch ? 'pt-[108px]' : 'pt-14'}`}
       >
         {dims.w > 0 && dims.h > 0 && (
           <div
