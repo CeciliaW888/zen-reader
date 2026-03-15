@@ -76,10 +76,6 @@ export const Reader: React.FC<ReaderProps> = ({
     });
   }, [book.chapters, chapterPageCounts]);
 
-  const totalBookPages = chapterOffsets[chapterOffsets.length - 1]?.end || 1;
-  const currentChapterOffset = chapterOffsets[currentChapterIndex]?.start || 0;
-  const absolutePage = currentChapterOffset + targetPage;
-
   // Highlight State
   const [selectedText, setSelectedText] = useState<{ text: string; top: number; left: number } | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -130,6 +126,11 @@ export const Reader: React.FC<ReaderProps> = ({
     ? (book.lastReadChapterId === currentChapterId && book.lastReadPage !== undefined
         ? book.lastReadPage : 0)
     : currentPage;
+
+  // Calculate absolute page number for Kindle-style pagination
+  const totalBookPages = chapterOffsets[chapterOffsets.length - 1]?.end || 1;
+  const currentChapterOffset = chapterOffsets[currentChapterIndex]?.start || 0;
+  const absolutePage = currentChapterOffset + targetPage;
 
   // Save reading progress whenever page or chapter changes.
   // We track which chapter each page value "belongs to" via a ref,
