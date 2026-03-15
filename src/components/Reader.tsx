@@ -67,6 +67,8 @@ export const Reader: React.FC<ReaderProps> = ({
   const hasNext = currentChapterIndex > -1 && currentChapterIndex < book.chapters.length - 1;
 
   const prevChapterIdRef = useRef(currentChapterId);
+  // True during the render(s) where chapterId changed but state hasn't caught up
+  const chapterIsTransitioning = prevChapterIdRef.current !== currentChapterId;
 
   // Reset page when chapter changes
   useEffect(() => {
@@ -88,6 +90,15 @@ export const Reader: React.FC<ReaderProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChapterId]);
+
+  // The page to use for rendering. During the transitional render (chapterId
+  // changed but setCurrentPage hasn't committed yet), compute the correct
+  // target page synchronously so the transform and page indicator are correct
+  // immediately — no flash of the old page's position.
+  const targetPage = chapterIsTransitioning
+    ? (book.lastReadChapterId === currentChapterId && book.lastReadPage !== undefined
+        ? book.lastReadPage : 0)
+    : currentPage;
 
   // Save reading progress whenever page or chapter changes.
   // We track which chapter each page value "belongs to" via a ref,
@@ -431,12 +442,13 @@ export const Reader: React.FC<ReaderProps> = ({
               columnFill: 'auto' as const,
               padding: `${padY}px ${padX}px`,
               boxSizing: 'border-box' as const,
-              transform: `translateX(${-currentPage * dims.w}px)`,
-              transition: 'transform 0.3s ease-out',
+              transform: `translateX(${-targetPage * dims.w}px)`,
+              // Disable transition on chapter switch to avoid animating from stale position
+              transition: chapterIsTransitioning ? 'none' : 'transform 0.3s ease-out',
             }}
           >
             {/* Book Notes on first page */}
-            {book.notes && currentPage === 0 && (
+            {book.notes && targetPage === 0 && (
               <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl relative group not-prose">
                 <div className="flex items-center gap-2 mb-1 text-yellow-800 font-serif font-bold text-sm">
                   <FilePenLine size={14} /><span>Book Notes</span>
@@ -466,7 +478,7 @@ export const Reader: React.FC<ReaderProps> = ({
 
       {/* Page indicator */}
       <div className={`flex justify-center items-center py-1.5 text-xs ${theme.ui} opacity-50 select-none`}>
-        <span>{currentPage + 1} / {totalPages}</span>
+        <span>{targetPage + 1} / {totalPages}</span>
       </div>
 
       {/* AI Panel */}
