@@ -66,15 +66,29 @@ export const Reader: React.FC<ReaderProps> = ({
   const hasPrev = currentChapterIndex > 0;
   const hasNext = currentChapterIndex > -1 && currentChapterIndex < book.chapters.length - 1;
 
+  // Track if chapter just changed (to prevent pagination from overriding)
+  const chapterJustChangedRef = useRef(false);
+  const prevChapterIdRef = useRef(currentChapterId);
+
   // Reset page when chapter changes
   useEffect(() => {
-    setSearchQuery('');
-    setSelectedText(null);
-    // Restore last read page if returning to this chapter
-    if (book.lastReadChapterId === currentChapterId && book.lastReadPage !== undefined) {
-      setCurrentPage(book.lastReadPage);
-    } else {
-      setCurrentPage(0);
+    const chapterChanged = prevChapterIdRef.current !== currentChapterId;
+    prevChapterIdRef.current = currentChapterId;
+
+    if (chapterChanged) {
+      chapterJustChangedRef.current = true;
+      setSearchQuery('');
+      setSelectedText(null);
+      // Restore last read page if returning to this chapter
+      if (book.lastReadChapterId === currentChapterId && book.lastReadPage !== undefined) {
+        setCurrentPage(book.lastReadPage);
+      } else {
+        setCurrentPage(0);
+      }
+      // Clear flag after a short delay (after pagination calculation runs)
+      setTimeout(() => {
+        chapterJustChangedRef.current = false;
+      }, 1000);
     }
   }, [currentChapterId, book.lastReadChapterId, book.lastReadPage]);
 
@@ -122,7 +136,12 @@ export const Reader: React.FC<ReaderProps> = ({
       const sw = contentRef.current.scrollWidth;
       const pages = Math.max(1, Math.round(sw / dims.w));
       setTotalPages(pages);
-      setCurrentPage(prev => Math.min(prev, pages - 1));
+      
+      // Only update currentPage if chapter didn't just change
+      // (chapter navigation sets its own page number)
+      if (!chapterJustChangedRef.current) {
+        setCurrentPage(prev => Math.min(prev, pages - 1));
+      }
     };
 
     // Run multiple times to handle font/image loading
