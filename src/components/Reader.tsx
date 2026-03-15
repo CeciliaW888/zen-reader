@@ -96,6 +96,9 @@ export const Reader: React.FC<ReaderProps> = ({
   const prevChapterIdRef = useRef(currentChapterId);
   // True during the render(s) where chapterId changed but state hasn't caught up
   const chapterIsTransitioning = prevChapterIdRef.current !== currentChapterId;
+  // Counter that increments on each chapter change — used to prevent the page-count
+  // effect from clamping currentPage back to a stale value after a chapter switch.
+  const chapterChangeEpochRef = useRef(0);
 
   // Reset page when chapter changes
   useEffect(() => {
@@ -103,8 +106,22 @@ export const Reader: React.FC<ReaderProps> = ({
     prevChapterIdRef.current = currentChapterId;
 
     if (chapterChanged) {
+      // Bump epoch so the page-count effect knows to skip clamping
+      chapterChangeEpochRef.current += 1;
+
       setSearchQuery('');
       setSelectedText(null);
+
+      // Reset scroll positions on both containers to prevent off-centered content
+      if (outerRef.current) {
+        outerRef.current.scrollLeft = 0;
+        outerRef.current.scrollTop = 0;
+      }
+      if (contentRef.current) {
+        contentRef.current.scrollLeft = 0;
+        contentRef.current.scrollTop = 0;
+      }
+
       // Restore last read page if returning to this chapter.
       // We read book.lastReadChapterId/lastReadPage from the current book prop,
       // but intentionally do NOT list them as deps — this effect should only
@@ -184,6 +201,11 @@ export const Reader: React.FC<ReaderProps> = ({
   useEffect(() => {
     if (!contentRef.current || dims.w === 0 || dims.h === 0) return;
 
+    // Capture the epoch at the time this effect starts. If the chapter changes
+    // while our timeouts are pending, the cleanup will clear them, but this also
+    // guards against any edge-case race: we skip clamping if the epoch moved on.
+    const epochAtStart = chapterChangeEpochRef.current;
+
     const calculate = () => {
       if (!contentRef.current || dims.w === 0) return;
       const sw = contentRef.current.scrollWidth;
@@ -197,11 +219,13 @@ export const Reader: React.FC<ReaderProps> = ({
         return newCounts;
       });
       
-      // Clamp page to valid range. If chapter just changed, the chapter-change
-      // effect already set currentPage to 0 (or saved position), so clamping
-      // min(0, pages-1) = 0 is a no-op. For resize/font changes within the
-      // same chapter, this correctly keeps the user on a valid page.
-      setCurrentPage(prev => Math.min(prev, pages - 1));
+      // Clamp page to valid range, but ONLY if the chapter hasn't changed
+      // since this effect started. The chapter-change effect is responsible for
+      // setting the correct page (0 or restored position) — we must not
+      // override it with a stale clamp.
+      if (chapterChangeEpochRef.current === epochAtStart) {
+        setCurrentPage(prev => Math.min(prev, pages - 1));
+      }
     };
 
     // Run multiple times to handle font/image loading
