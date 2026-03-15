@@ -49,6 +49,37 @@ export const Reader: React.FC<ReaderProps> = ({
   // Container dimensions in exact pixels
   const [dims, setDims] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
 
+  // Calculate chapter page offsets for book-absolute pagination (like Kindle)
+  // Maps each chapter to its starting absolute page number
+  const [chapterPageCounts, setChapterPageCounts] = useState<number[]>([]);
+  
+  // Initialize chapter page counts with estimates based on content length
+  useEffect(() => {
+    if (chapterPageCounts.length > 0 || dims.w === 0) return;
+    
+    // Estimate pages based on content length (rough approximation)
+    // Average ~2000 chars per page (varies by font size/window width)
+    const charsPerPage = 2000 * (settings.fontSize / 3); // Adjust for font size
+    const estimatedCounts = book.chapters.map(ch => 
+      Math.max(1, Math.round(ch.content.length / charsPerPage))
+    );
+    setChapterPageCounts(estimatedCounts);
+  }, [book.chapters, chapterPageCounts.length, dims.w, settings.fontSize]);
+  
+  const chapterOffsets = useMemo(() => {
+    let offset = 0;
+    return book.chapters.map((_, idx) => {
+      const start = offset;
+      const count = chapterPageCounts[idx] || 1;
+      offset += count;
+      return { start, end: offset };
+    });
+  }, [book.chapters, chapterPageCounts]);
+
+  const totalBookPages = chapterOffsets[chapterOffsets.length - 1]?.end || 1;
+  const currentChapterOffset = chapterOffsets[currentChapterIndex]?.start || 0;
+  const absolutePage = currentChapterOffset + targetPage;
+
   // Highlight State
   const [selectedText, setSelectedText] = useState<{ text: string; top: number; left: number } | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -157,6 +188,14 @@ export const Reader: React.FC<ReaderProps> = ({
       const sw = contentRef.current.scrollWidth;
       const pages = Math.max(1, Math.round(sw / dims.w));
       setTotalPages(pages);
+      
+      // Update the page count for this chapter in the book-wide array
+      setChapterPageCounts(prev => {
+        const newCounts = [...prev];
+        newCounts[currentChapterIndex] = pages;
+        return newCounts;
+      });
+      
       // Clamp page to valid range. If chapter just changed, the chapter-change
       // effect already set currentPage to 0 (or saved position), so clamping
       // min(0, pages-1) = 0 is a no-op. For resize/font changes within the
@@ -170,7 +209,7 @@ export const Reader: React.FC<ReaderProps> = ({
     const t2 = setTimeout(calculate, 300);
     const t3 = setTimeout(calculate, 800);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [dims.w, dims.h, currentChapter?.content, settings.fontSize, settings.fontFamily]);
+  }, [dims.w, dims.h, currentChapter?.content, settings.fontSize, settings.fontFamily, currentChapterIndex]);
 
   // Page navigation
   const goToNextPage = useCallback(() => {
@@ -478,7 +517,7 @@ export const Reader: React.FC<ReaderProps> = ({
 
       {/* Page indicator */}
       <div className={`flex justify-center items-center py-1.5 text-xs ${theme.ui} opacity-50 select-none`}>
-        <span>{targetPage + 1} / {totalPages}</span>
+        <span>{absolutePage + 1} / {totalBookPages}</span>
       </div>
 
       {/* AI Panel */}
