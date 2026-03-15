@@ -66,8 +66,6 @@ export const Reader: React.FC<ReaderProps> = ({
   const hasPrev = currentChapterIndex > 0;
   const hasNext = currentChapterIndex > -1 && currentChapterIndex < book.chapters.length - 1;
 
-  // Track if chapter just changed (to prevent pagination from overriding)
-  const chapterJustChangedRef = useRef(false);
   const prevChapterIdRef = useRef(currentChapterId);
 
   // Reset page when chapter changes
@@ -76,23 +74,27 @@ export const Reader: React.FC<ReaderProps> = ({
     prevChapterIdRef.current = currentChapterId;
 
     if (chapterChanged) {
-      chapterJustChangedRef.current = true;
       setSearchQuery('');
       setSelectedText(null);
-      // Restore last read page if returning to this chapter
+      // Restore last read page if returning to this chapter.
+      // We read book.lastReadChapterId/lastReadPage from the current book prop,
+      // but intentionally do NOT list them as deps — this effect should only
+      // fire on actual chapter navigation, not when progress saves update the book.
       if (book.lastReadChapterId === currentChapterId && book.lastReadPage !== undefined) {
         setCurrentPage(book.lastReadPage);
       } else {
         setCurrentPage(0);
       }
-      // Clear flag after a short delay (after pagination calculation runs)
-      setTimeout(() => {
-        chapterJustChangedRef.current = false;
-      }, 1000);
     }
-  }, [currentChapterId, book.lastReadChapterId, book.lastReadPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentChapterId]);
 
-  // Save reading progress whenever page or chapter changes
+  // Save reading progress whenever page or chapter changes.
+  // We track which chapter each page value "belongs to" via a ref,
+  // preventing stale saves when chapterId changes but currentPage
+  // hasn't been reset yet (React renders with new chapter + old page).
+  const confirmedChapterRef = useRef(currentChapterId);
+
   useEffect(() => {
     const saveProgress = async () => {
       const latestBook = bookRef.current;
@@ -105,6 +107,14 @@ export const Reader: React.FC<ReaderProps> = ({
       await saveBook(updatedBook);
       onBookUpdateRef.current?.(updatedBook);
     };
+
+    // If the chapter just changed in this render, currentPage may be stale.
+    // Skip this save — the chapter-change effect will update currentPage,
+    // triggering a fresh render and a correct save.
+    if (confirmedChapterRef.current !== currentChapterId) {
+      confirmedChapterRef.current = currentChapterId;
+      return;
+    }
 
     const timeoutId = setTimeout(saveProgress, 1000);
     return () => clearTimeout(timeoutId);
@@ -136,12 +146,11 @@ export const Reader: React.FC<ReaderProps> = ({
       const sw = contentRef.current.scrollWidth;
       const pages = Math.max(1, Math.round(sw / dims.w));
       setTotalPages(pages);
-      
-      // Only update currentPage if chapter didn't just change
-      // (chapter navigation sets its own page number)
-      if (!chapterJustChangedRef.current) {
-        setCurrentPage(prev => Math.min(prev, pages - 1));
-      }
+      // Clamp page to valid range. If chapter just changed, the chapter-change
+      // effect already set currentPage to 0 (or saved position), so clamping
+      // min(0, pages-1) = 0 is a no-op. For resize/font changes within the
+      // same chapter, this correctly keeps the user on a valid page.
+      setCurrentPage(prev => Math.min(prev, pages - 1));
     };
 
     // Run multiple times to handle font/image loading

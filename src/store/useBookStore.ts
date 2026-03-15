@@ -16,9 +16,12 @@ export const useBookStore = create<BookState>((set) => ({
   currentChapterId: '',
 
   setBook: (book) => {
+    const prevBook = useBookStore.getState().book;
     set({ book });
-    if (book && book.chapters.length > 0) {
-      // Resume from last read position if available
+    // Only set currentChapterId on initial load (no previous book),
+    // not on in-place updates (saves, highlights, progress).
+    // In-place updates should never override the user's current chapter.
+    if (!prevBook && book && book.chapters.length > 0) {
       const chapterId = book.lastReadChapterId || book.chapters[0].id;
       set({ currentChapterId: chapterId });
     }
